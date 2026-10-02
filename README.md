@@ -409,8 +409,4 @@ docker compose down
 
 # Restart it later
 docker compose up -d
-<<<<<<< HEAD
-=======
 
-
->>>>>>> 01b9423 (Improve README for recruiters)
