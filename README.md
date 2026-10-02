@@ -1,35 +1,56 @@
 # Inventory & Order Management System
 
-A backend-focused portfolio project built with Laravel, MySQL, Go, Docker, Nginx, REST APIs, and Vanilla JavaScript.
+A **full-stack inventory and order management system** built with **Laravel, MySQL, Go, REST APIs, Docker, Nginx, and Vanilla JavaScript**.
 
-The application manages products, customers, suppliers, inventory, stock movements, and orders. It includes role-based authentication, transaction-safe stock handling, dashboards, reports, a separate Go reporting service, a small browser interface, automated tests, and Swagger documentation.
+This project demonstrates practical backend and full-stack development through **RESTful API design, authentication, role-based access control, inventory management, transaction-safe order processing, reporting, automated testing, and a separate Go reporting service**.
 
-## Technology
+## 🚀 Key Highlights
 
-- PHP 8.4 and Laravel 12
-- MySQL 8.4
-- Go 1.24
-- Laravel Sanctum
-- Nginx
-- Docker Compose
-- Vanilla JavaScript and CSS
-- OpenAPI 3 and Swagger UI
+* **Laravel 12 REST API** with Laravel Sanctum authentication
+* **Role-based access control** for Admin, Manager, and Staff users
+* **Product, category, supplier, and customer management**
+* **Inventory management** with stock movements and low-stock tracking
+* **Order management** with status workflow and transaction-safe stock updates
+* **Dashboard and business reports** for sales, orders, products, and inventory
+* **Go-based reporting service** integrated with the Laravel application
+* **Swagger/OpenAPI documentation** for API exploration
+* **Automated Laravel and Go tests**
+* **Docker Compose setup** for reproducible application, database, Nginx, and reporting-service environments
+* Responsive browser-based interface using **Blade, Vanilla JavaScript, and CSS**
 
-## Architecture
+## 🛠️ Technology Stack
+
+| Layer             | Technologies                               |
+| ----------------- | ------------------------------------------ |
+| Backend           | PHP 8.4, Laravel 12, Laravel Sanctum       |
+| Database          | MySQL 8.4                                  |
+| Reporting Service | Go 1.24                                    |
+| Frontend          | Blade, Vanilla JavaScript, CSS             |
+| API               | REST, OpenAPI 3, Swagger UI                |
+| Infrastructure    | Docker Compose, Nginx                      |
+| Testing           | PHPUnit / Laravel Testing, Go Tests        |
+| Architecture      | Laravel API + Go Reporting Service + MySQL |
+
+## 🏗️ Architecture
 
 ```text
-Browser / API client
-        |
-        v
-Nginx :8088 ---> Laravel API ---> MySQL
-                         ^           ^
-                         |           |
-                  Sanctum tokens     |
-                                     |
-API client ---> Go reporting :8090 -+
+Browser / API Client
+        │
+        ▼
+   Nginx :8088
+        │
+        ▼
+ Laravel 12 API ───────────────┐
+        │                      │
+        ▼                      ▼
+    MySQL :3306         Go Reporting Service :8090
+                               │
+                               ▼
+                            MySQL
 ```
 
-Laravel owns authentication, validation, CRUD operations, inventory changes, and order workflows. The Go service has one responsibility: read reporting data from MySQL and return JSON.
+The application uses Laravel as the primary backend/API layer, while a separate Go service provides reporting functionality. Docker Compose manages the application, Nginx, MySQL, and Go reporting service.
+
 
 ## Main features
 
