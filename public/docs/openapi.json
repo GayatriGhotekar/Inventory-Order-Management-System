@@ -1,0 +1,119 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Inventory & Order Management API",
+    "version": "1.0.0",
+    "description": "REST API for authentication, catalog, contacts, inventory, orders, dashboard, and reports. Login first, copy data.token, and authorize with the Bearer token."
+  },
+  "servers": [{ "url": "http://localhost:8088", "description": "Laravel API" }],
+  "tags": [
+    { "name": "Health" }, { "name": "Authentication" }, { "name": "Categories" },
+    { "name": "Products" }, { "name": "Suppliers" }, { "name": "Customers" },
+    { "name": "Inventory" }, { "name": "Orders" }, { "name": "Dashboard" },
+    { "name": "Reports" }, { "name": "Go Reports" }
+  ],
+  "paths": {
+    "/api/health": {
+      "get": { "tags": ["Health"], "summary": "Check Laravel and MySQL", "responses": { "200": { "$ref": "#/components/responses/Success" }, "503": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/register": {
+      "post": { "tags": ["Authentication"], "summary": "Register a staff user", "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RegisterRequest" } } } }, "responses": { "201": { "$ref": "#/components/responses/Success" }, "422": { "$ref": "#/components/responses/ValidationError" } } }
+    },
+    "/api/login": {
+      "post": { "tags": ["Authentication"], "summary": "Login and receive a token", "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LoginRequest" } } } }, "responses": { "200": { "$ref": "#/components/responses/Success" }, "401": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/profile": { "get": { "tags": ["Authentication"], "summary": "Get current user", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Success" }, "401": { "$ref": "#/components/responses/Unauthorized" } } } },
+    "/api/logout": { "post": { "tags": ["Authentication"], "summary": "Revoke current token", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Success" }, "401": { "$ref": "#/components/responses/Unauthorized" } } } },
+
+    "/api/categories": {
+      "get": { "tags": ["Categories"], "summary": "List categories", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Success" } } },
+      "post": { "tags": ["Categories"], "summary": "Create category (admin/manager)", "security": [{ "bearerAuth": [] }], "requestBody": { "$ref": "#/components/requestBodies/Category" }, "responses": { "201": { "$ref": "#/components/responses/Success" }, "403": { "$ref": "#/components/responses/Forbidden" }, "422": { "$ref": "#/components/responses/ValidationError" } } }
+    },
+    "/api/categories/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": { "tags": ["Categories"], "summary": "Get category", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Success" }, "404": { "$ref": "#/components/responses/NotFound" } } },
+      "put": { "tags": ["Categories"], "summary": "Update category (admin/manager)", "security": [{ "bearerAuth": [] }], "requestBody": { "$ref": "#/components/requestBodies/Category" }, "responses": { "200": { "$ref": "#/components/responses/Success" }, "403": { "$ref": "#/components/responses/Forbidden" }, "422": { "$ref": "#/components/responses/ValidationError" } } },
+      "delete": { "tags": ["Categories"], "summary": "Delete category (admin/manager)", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Success" }, "409": { "$ref": "#/components/responses/Error" } } }
+    },
+
+    "/api/products": {
+      "get": { "tags": ["Products"], "summary": "List, search, and filter products", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "search", "in": "query", "schema": { "type": "string" } }, { "name": "category_id", "in": "query", "schema": { "type": "integer" } }, { "$ref": "#/components/parameters/Page" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } },
+      "post": { "tags": ["Products"], "summary": "Create product (admin/manager)", "security": [{ "bearerAuth": [] }], "requestBody": { "$ref": "#/components/requestBodies/Product" }, "responses": { "201": { "$ref": "#/components/responses/Success" }, "422": { "$ref": "#/components/responses/ValidationError" } } }
+    },
+    "/api/products/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": { "tags": ["Products"], "summary": "Get product", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Success" } } },
+      "put": { "tags": ["Products"], "summary": "Update product (admin/manager)", "security": [{ "bearerAuth": [] }], "requestBody": { "$ref": "#/components/requestBodies/Product" }, "responses": { "200": { "$ref": "#/components/responses/Success" }, "422": { "$ref": "#/components/responses/ValidationError" } } },
+      "delete": { "tags": ["Products"], "summary": "Delete product (admin/manager)", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Success" } } }
+    },
+
+    "/api/suppliers": { "get": { "tags": ["Suppliers"], "summary": "List suppliers", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Success" } } }, "post": { "tags": ["Suppliers"], "summary": "Create supplier (admin/manager)", "security": [{ "bearerAuth": [] }], "requestBody": { "$ref": "#/components/requestBodies/Supplier" }, "responses": { "201": { "$ref": "#/components/responses/Success" } } } },
+    "/api/suppliers/{id}": { "parameters": [{ "$ref": "#/components/parameters/Id" }], "get": { "tags": ["Suppliers"], "summary": "Get supplier", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Success" } } }, "put": { "tags": ["Suppliers"], "summary": "Update supplier (admin/manager)", "security": [{ "bearerAuth": [] }], "requestBody": { "$ref": "#/components/requestBodies/Supplier" }, "responses": { "200": { "$ref": "#/components/responses/Success" } } }, "delete": { "tags": ["Suppliers"], "summary": "Delete supplier (admin/manager)", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/api/customers": { "get": { "tags": ["Customers"], "summary": "List customers", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Success" } } }, "post": { "tags": ["Customers"], "summary": "Create customer (admin/manager)", "security": [{ "bearerAuth": [] }], "requestBody": { "$ref": "#/components/requestBodies/Customer" }, "responses": { "201": { "$ref": "#/components/responses/Success" } } } },
+    "/api/customers/{id}": { "parameters": [{ "$ref": "#/components/parameters/Id" }], "get": { "tags": ["Customers"], "summary": "Get customer", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Success" } } }, "put": { "tags": ["Customers"], "summary": "Update customer (admin/manager)", "security": [{ "bearerAuth": [] }], "requestBody": { "$ref": "#/components/requestBodies/Customer" }, "responses": { "200": { "$ref": "#/components/responses/Success" } } }, "delete": { "tags": ["Customers"], "summary": "Delete customer (admin/manager)", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+
+    "/api/inventory": { "get": { "tags": ["Inventory"], "summary": "View current inventory", "security": [{ "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/Page" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/api/inventory/low-stock": { "get": { "tags": ["Inventory"], "summary": "View low-stock products", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/api/inventory/{id}": { "get": { "tags": ["Inventory"], "summary": "View product stock movements", "security": [{ "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/api/inventory/{id}/add": { "post": { "tags": ["Inventory"], "summary": "Add stock (admin/manager)", "security": [{ "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/Id" }], "requestBody": { "$ref": "#/components/requestBodies/Stock" }, "responses": { "200": { "$ref": "#/components/responses/Success" }, "422": { "$ref": "#/components/responses/ValidationError" } } } },
+    "/api/inventory/{id}/remove": { "post": { "tags": ["Inventory"], "summary": "Remove stock (admin/manager)", "security": [{ "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/Id" }], "requestBody": { "$ref": "#/components/requestBodies/Stock" }, "responses": { "200": { "$ref": "#/components/responses/Success" }, "422": { "$ref": "#/components/responses/ValidationError" } } } },
+
+    "/api/orders": {
+      "get": { "tags": ["Orders"], "summary": "List and filter orders", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "status", "in": "query", "schema": { "$ref": "#/components/schemas/OrderStatus" } }, { "$ref": "#/components/parameters/Page" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } },
+      "post": { "tags": ["Orders"], "summary": "Create pending order", "security": [{ "bearerAuth": [] }], "requestBody": { "$ref": "#/components/requestBodies/Order" }, "responses": { "201": { "$ref": "#/components/responses/Success" }, "422": { "$ref": "#/components/responses/ValidationError" } } }
+    },
+    "/api/orders/{id}": { "parameters": [{ "$ref": "#/components/parameters/Id" }], "get": { "tags": ["Orders"], "summary": "Get order and items", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Success" } } }, "delete": { "tags": ["Orders"], "summary": "Delete pending order (admin/manager)", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Success" }, "409": { "$ref": "#/components/responses/Error" } } } },
+    "/api/orders/{id}/status": { "patch": { "tags": ["Orders"], "summary": "Change order status (admin/manager)", "security": [{ "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/Id" }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["status"], "properties": { "status": { "$ref": "#/components/schemas/OrderStatus" } } } } } }, "responses": { "200": { "$ref": "#/components/responses/Success" }, "409": { "$ref": "#/components/responses/Error" }, "422": { "$ref": "#/components/responses/ValidationError" } } } },
+
+    "/api/dashboard": { "get": { "tags": ["Dashboard"], "summary": "Get dashboard totals", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/api/reports/daily-sales": { "get": { "tags": ["Reports"], "summary": "Get delivered sales for a day", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "date", "in": "query", "schema": { "type": "string", "format": "date" } }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/api/reports/monthly-sales": { "get": { "tags": ["Reports"], "summary": "Get delivered sales grouped by month", "security": [{ "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/Year" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/api/reports/orders-summary": { "get": { "tags": ["Reports"], "summary": "Get total orders and status counts", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/api/reports/best-selling-products": { "get": { "tags": ["Reports"], "summary": "Get best-selling delivered products", "security": [{ "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/Limit" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/api/reports/inventory": { "get": { "tags": ["Reports"], "summary": "Get inventory report", "security": [{ "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/Page" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/api/reports/low-stock": { "get": { "tags": ["Reports"], "summary": "Get low-stock report", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+
+    "/health": { "get": { "tags": ["Go Reports"], "summary": "Check Go service and MySQL", "servers": [{ "url": "http://localhost:8090" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/reports/sales-summary": { "get": { "tags": ["Go Reports"], "summary": "Get sales summary from Go", "servers": [{ "url": "http://localhost:8090" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/reports/top-products": { "get": { "tags": ["Go Reports"], "summary": "Get top products from Go", "servers": [{ "url": "http://localhost:8090" }], "parameters": [{ "$ref": "#/components/parameters/Limit" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/reports/monthly-sales": { "get": { "tags": ["Go Reports"], "summary": "Get monthly sales from Go", "servers": [{ "url": "http://localhost:8090" }], "parameters": [{ "$ref": "#/components/parameters/Year" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } }
+  },
+  "components": {
+    "securitySchemes": { "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "Sanctum token" } },
+    "parameters": {
+      "Id": { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } },
+      "Page": { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1, "default": 1 } },
+      "Limit": { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 10 } },
+      "Year": { "name": "year", "in": "query", "schema": { "type": "integer", "minimum": 2000, "example": 2026 } }
+    },
+    "schemas": {
+      "OrderStatus": { "type": "string", "enum": ["Pending", "Confirmed", "Processing", "Shipped", "Delivered", "Cancelled"] },
+      "LoginRequest": { "type": "object", "required": ["email", "password"], "properties": { "email": { "type": "string", "format": "email", "example": "admin@example.com" }, "password": { "type": "string", "format": "password", "example": "password" } } },
+      "RegisterRequest": { "type": "object", "required": ["name", "email", "password", "password_confirmation"], "properties": { "name": { "type": "string" }, "email": { "type": "string", "format": "email" }, "password": { "type": "string", "minLength": 8 }, "password_confirmation": { "type": "string" } } },
+      "CategoryRequest": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string" }, "description": { "type": "string", "nullable": true } } },
+      "ProductRequest": { "type": "object", "required": ["category_id", "name", "sku", "price", "stock_quantity", "low_stock_limit", "status"], "properties": { "category_id": { "type": "integer" }, "name": { "type": "string" }, "sku": { "type": "string" }, "description": { "type": "string", "nullable": true }, "price": { "type": "number", "format": "double" }, "stock_quantity": { "type": "integer", "minimum": 0 }, "low_stock_limit": { "type": "integer", "minimum": 0 }, "status": { "type": "string", "enum": ["Active", "Inactive"] } } },
+      "SupplierRequest": { "type": "object", "required": ["name", "email", "status"], "properties": { "name": { "type": "string" }, "email": { "type": "string", "format": "email" }, "phone": { "type": "string", "nullable": true }, "address": { "type": "string", "nullable": true }, "status": { "type": "string", "enum": ["Active", "Inactive"] } } },
+      "CustomerRequest": { "type": "object", "required": ["name", "email"], "properties": { "name": { "type": "string" }, "email": { "type": "string", "format": "email" }, "phone": { "type": "string", "nullable": true }, "address": { "type": "string", "nullable": true } } },
+      "StockRequest": { "type": "object", "required": ["quantity"], "properties": { "quantity": { "type": "integer", "minimum": 1 }, "reference": { "type": "string", "nullable": true } } },
+      "OrderRequest": { "type": "object", "required": ["customer_id", "items"], "properties": { "customer_id": { "type": "integer" }, "items": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["product_id", "quantity"], "properties": { "product_id": { "type": "integer" }, "quantity": { "type": "integer", "minimum": 1 } } } } } },
+      "ApiResponse": { "type": "object", "properties": { "success": { "type": "boolean" }, "message": { "type": "string" }, "data": {} } },
+      "ErrorResponse": { "type": "object", "properties": { "success": { "type": "boolean", "example": false }, "message": { "type": "string" }, "errors": { "type": "object", "additionalProperties": { "type": "array", "items": { "type": "string" } } } } }
+    },
+    "requestBodies": {
+      "Category": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CategoryRequest" } } } },
+      "Product": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductRequest" } } } },
+      "Supplier": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SupplierRequest" } } } },
+      "Customer": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CustomerRequest" } } } },
+      "Stock": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StockRequest" } } } },
+      "Order": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OrderRequest" } } } }
+    },
+    "responses": {
+      "Success": { "description": "Successful response", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+      "Error": { "description": "Request failed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+      "ValidationError": { "description": "Validation failed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+      "Unauthorized": { "description": "Authentication required", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+      "Forbidden": { "description": "Role is not permitted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+      "NotFound": { "description": "Record not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+    }
+  }
+}
