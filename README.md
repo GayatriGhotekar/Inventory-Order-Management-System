@@ -1,4 +1,4 @@
-# Inventory & Order Management System
+﻿# Inventory & Order Management System
 
 A **full-stack inventory and order management system** built with **Laravel, MySQL, Go, REST APIs, Docker, Nginx, and Vanilla JavaScript**.
 
@@ -30,6 +30,7 @@ This project demonstrates practical backend and full-stack development through *
 | Infrastructure    | Docker Compose, Nginx                      |
 | Testing           | PHPUnit / Laravel Testing, Go Tests        |
 | Architecture      | Laravel API + Go Reporting Service + MySQL |
+
 
 ## 🏗️ Architecture
 
@@ -408,3 +409,8 @@ docker compose down
 
 # Restart it later
 docker compose up -d
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> 01b9423 (Improve README for recruiters)
