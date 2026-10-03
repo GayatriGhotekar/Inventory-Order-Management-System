@@ -2,7 +2,7 @@
 
 A **full-stack inventory and order management application** built with **Laravel, MySQL, Go, REST APIs, Docker, Nginx, and Vanilla JavaScript**.
 
-The system manages products, inventory,suppliers, customers, and orders with **role-based access control, transaction-safe stock updates, reporting, Swagger API documentation, and automated testing**.
+The system manages products, inventory, suppliers, customers, and orders with **role-based access control, transaction-safe stock updates, reporting, Swagger API documentation, and automated testing**.
 
 ## 🚀 Key Highlights
 
@@ -14,7 +14,7 @@ The system manages products, inventory,suppliers, customers, and orders with **r
 * **Dashboard and business reports** for sales, orders, products, and inventory
 * **Go-based reporting service** integrated with the Laravel application
 * **Swagger/OpenAPI documentation** for API exploration
-* **Automated testing** with laravel/PHPUnit and Go tests
+* **Automated testing** with Laravel/PHPUnit and Go tests
 * **Docker Compose setup** for reproducible application, database, Nginx, and reporting-service environments
 * Responsive browser-based interface using **Blade, Vanilla JavaScript, and CSS**
 
@@ -35,16 +35,16 @@ The system manages products, inventory,suppliers, customers, and orders with **r
 ##  Screenshots
 
 ### Dashboard
-![Dashboard][docs/screenshots/dashboard.png]
+![Dashboard](docs/screenshots/dashboard.png)
 
 ### Product Management
-![Product Management][docs/screenshots/products.png]
+![Product Management](docs/screenshots/products.png)
 
 ### Order Management
-![Order Management][docs/screenshots/orders.png]
+![Order Management](docs/screenshots/orders.png)
 
 ### Swagger API Documentation
-![Swagger API Documentation][docs/screenshots/swagger.png]
+![Swagger API Documentation](docs/screenshots/swagger.png)
 
 ## 🏗️ Architecture
 
@@ -67,7 +67,7 @@ Browser / API Client
 The application uses Laravel as the primary backend/API layer, while a separate Go service provides reporting functionality. Docker Compose manages the application, Nginx, MySQL, and Go reporting service.
 
 
-## Main features
+## Main Features
 
 - Register, login, logout, and authenticated profile
 - Admin, manager, and staff roles
@@ -88,7 +88,7 @@ The application uses Laravel as the primary backend/API layer, while a separate 
 
 Only Docker and Docker Compose v2 are required. Local PHP, Composer, Go, MySQL, and Nginx installations are not needed.
 
-## Quick start
+## Quick Start
 
 
 ### 1. Clone the repository:
@@ -110,7 +110,7 @@ cp .env.example .env
 docker compose run --rm app php artisan key:generate
 ```
 
-### 4. start the application
+### 4. Start the application
 
 ```bash
 docker compose up -d --build
@@ -123,7 +123,7 @@ docker compose up -d --build
 docker compose exec app php artisan migrate --seed
 ```
 
-The first two commands are only needed when `.env` does not already exist.
+The .env file creation and application key generation are only requried during the initial setup. 
 
 Open:
 
@@ -412,7 +412,19 @@ curl http://localhost:8088/api/health
 curl http://localhost:8090/health
 ```
 
-### Final Verification:
+## Final Verification:
+
+Run the following commands to verify that all services are working correctly: 
+
+```bash
+docker compose config --quiet
+docker  compose exec app php artisan test 
+docker compose builde reporting 
+curl http://localhost:8088/api/health
+curl http://localhost:8090/health
+```
+
+### Verification Results 
 
 ```bash
 PHP formatting: 67 files passed
@@ -427,14 +439,7 @@ MySQL: healthy
 ```
 
 
-## Project URLs:
 
-```bash
-Application:  http://localhost:8088
-Swagger:      http://localhost:8088/api/documentation
-Laravel API:  http://localhost:8088/api/health
-Go service:   http://localhost:8090/health
-```
 
 
 
