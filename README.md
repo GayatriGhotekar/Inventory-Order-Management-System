@@ -1,8 +1,8 @@
 ﻿# Inventory & Order Management System
 
-A **full-stack inventory and order management system** built with **Laravel, MySQL, Go, REST APIs, Docker, Nginx, and Vanilla JavaScript**.
+A **full-stack inventory and order management application** built with **Laravel, MySQL, Go, REST APIs, Docker, Nginx, and Vanilla JavaScript**.
 
-This project demonstrates practical backend and full-stack development through **RESTful API design, authentication, role-based access control, inventory management, transaction-safe order processing, reporting, automated testing, and a separate Go reporting service**.
+The system manages products, inventory,suppliers, customers, and orders with **role-based access control, transaction-safe stock updates, reporting, Swagger API documentation, and automated testing**.
 
 ## 🚀 Key Highlights
 
@@ -14,7 +14,7 @@ This project demonstrates practical backend and full-stack development through *
 * **Dashboard and business reports** for sales, orders, products, and inventory
 * **Go-based reporting service** integrated with the Laravel application
 * **Swagger/OpenAPI documentation** for API exploration
-* **Automated Laravel and Go tests**
+* **Automated testing** with laravel/PHPUnit and Go tests
 * **Docker Compose setup** for reproducible application, database, Nginx, and reporting-service environments
 * Responsive browser-based interface using **Blade, Vanilla JavaScript, and CSS**
 
@@ -31,6 +31,20 @@ This project demonstrates practical backend and full-stack development through *
 | Testing           | PHPUnit / Laravel Testing, Go Tests        |
 | Architecture      | Laravel API + Go Reporting Service + MySQL |
 
+
+##  Screenshots
+
+### Dashboard
+![Dashboard][docs/screenshots/dashboard.png]
+
+### Product Management
+![Product Management][docs/screenshots/products.png]
+
+### Order Management
+![Order Management][docs/screenshots/orders.png]
+
+### Swagger API Documentation
+![Swagger API Documentation][docs/screenshots/swagger.png]
 
 ## 🏗️ Architecture
 
@@ -76,12 +90,36 @@ Only Docker and Docker Compose v2 are required. Local PHP, Composer, Go, MySQL, 
 
 ## Quick start
 
-From the project directory:
+
+### 1. Clone the repository:
+
+```bash
+git clone https://github.com/GayatriGhotekar/Inventory-Order-Management-System.git
+cd Inventory-Order-Management-System
+```
+
+### 2. Create the env file
 
 ```bash
 cp .env.example .env
+```
+
+### 3. Generate the application key
+
+```bash
 docker compose run --rm app php artisan key:generate
+```
+
+### 4. start the application
+
+```bash
 docker compose up -d --build
+```
+
+### 5. Run the database migration and seeders
+
+
+```bash
 docker compose exec app php artisan migrate --seed
 ```
 
@@ -260,7 +298,7 @@ curl "http://localhost:8090/reports/monthly-sales?year=2026"
 
 The service uses `net/http`, `database/sql`, the MySQL driver, JSON, and environment variables. It does not duplicate Laravel's order or inventory logic.
 
-## Swagger documentation
+## API Documentation (Swagger)
 
 Open <http://localhost:8088/api/documentation>. The raw OpenAPI document is available at <http://localhost:8088/docs/openapi.json>.
 
@@ -374,7 +412,9 @@ curl http://localhost:8088/api/health
 curl http://localhost:8090/health
 ```
 
-Final Verification:
+### Final Verification:
+
+```bash
 PHP formatting: 67 files passed
 Laravel tests: 49 passed, 218 assertions
 Go tests: passed during Docker build
@@ -384,29 +424,19 @@ Go health: working
 Swagger: HTTP 200
 Application: HTTP 200
 MySQL: healthy
+```
 
 
+## Project URLs:
 
-Project URLs:
+```bash
 Application:  http://localhost:8088
 Swagger:      http://localhost:8088/api/documentation
 Laravel API:  http://localhost:8088/api/health
 Go service:   http://localhost:8090/health
+```
 
 
 
-# View service status
-docker compose ps
 
-# Follow logs
-docker compose logs -f
-
-# Run tests
-docker compose exec app php artisan test
-
-# Stop the project
-docker compose down
-
-# Restart it later
-docker compose up -d
 
