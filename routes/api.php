@@ -9,6 +9,9 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\StockTransferController;
+use App\Http\Controllers\WarehouseController;
+use App\Http\Controllers\WarehouseInventoryController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -32,6 +35,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/orders', [OrderController::class, 'index']);
     Route::post('/orders', [OrderController::class, 'store']);
     Route::get('/orders/{order}', [OrderController::class, 'show']);
+    Route::get('/warehouses', [WarehouseController::class, 'index']);
+    Route::get('/warehouses/{warehouse}', [WarehouseController::class, 'show']);
+    Route::get('/warehouse-inventory', [WarehouseInventoryController::class, 'index']);
+    Route::get('/stock-transfers', [StockTransferController::class, 'index']);
+    Route::get('/stock-transfers/{stockTransfer}', [StockTransferController::class, 'show']);
 
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::prefix('reports')->group(function () {
@@ -65,5 +73,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::delete('/orders/{order}', [OrderController::class, 'destroy']);
         Route::patch('/orders/{order}/status', [OrderController::class, 'updateStatus']);
+        Route::post('/warehouses', [WarehouseController::class, 'store']);
+        Route::put('/warehouses/{warehouse}', [WarehouseController::class, 'update']);
+        Route::delete('/warehouses/{warehouse}', [WarehouseController::class, 'destroy']);
+        Route::post('/warehouse-inventory/{warehouse}/{product}/adjust', [WarehouseInventoryController::class, 'adjust']);
+        Route::post('/stock-transfers', [StockTransferController::class, 'store']);
+        Route::patch('/stock-transfers/{stockTransfer}/status', [StockTransferController::class, 'updateStatus']);
+        Route::delete('/stock-transfers/{stockTransfer}', [StockTransferController::class, 'destroy']);
     });
 });

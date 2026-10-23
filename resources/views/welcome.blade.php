@@ -39,6 +39,8 @@
                 <button class="nav-button" data-view="categories">Categories</button>
                 <button class="nav-button" data-view="suppliers">Suppliers</button>
                 <button class="nav-button" data-view="customers">Customers</button>
+                <button class="nav-button" data-view="warehouses">Warehouses</button>
+                <button class="nav-button" data-view="transfers">Transfers</button>
                 <button class="nav-button" data-view="orders">Orders</button>
                 <button class="nav-button" data-view="inventory">Inventory</button>
                 <button class="nav-button" data-view="reports">Reports</button>
@@ -118,6 +120,41 @@
                         <button class="primary-button manager-action" data-action="create-customer">Add customer</button>
                     </div>
                     <div id="customers-table" class="table-wrap"></div>
+                </div>
+            </section>
+
+            <section id="warehouses-view" class="view" hidden>
+                <div class="panel">
+                    <div class="panel-heading">
+                        <div><p class="eyebrow">Locations</p><h2>Warehouses</h2></div>
+                        <button class="primary-button manager-action" data-action="create-warehouse">Add warehouse</button>
+                    </div>
+                    <div id="warehouses-table" class="table-wrap"></div>
+                </div>
+                <div class="panel">
+                    <div class="panel-heading">
+                        <div><p class="eyebrow">Warehouse stock</p><h2>Inventory balances</h2></div>
+                        <select id="warehouse-inventory-filter" aria-label="Filter inventory by warehouse"></select>
+                    </div>
+                    <div id="warehouse-inventory-table" class="table-wrap"></div>
+                    <div id="warehouse-inventory-pagination" class="pagination"></div>
+                </div>
+            </section>
+
+            <section id="transfers-view" class="view" hidden>
+                <div class="panel">
+                    <div class="panel-heading">
+                        <div><p class="eyebrow">Stock movement</p><h2>Warehouse transfers</h2></div>
+                        <div class="heading-actions">
+                            <select id="transfer-status" aria-label="Filter transfers by status">
+                                <option value="">All statuses</option><option>Draft</option><option>Approved</option>
+                                <option>In Transit</option><option>Received</option><option>Cancelled</option>
+                            </select>
+                            <button class="primary-button manager-action" data-action="create-transfer">Create transfer</button>
+                        </div>
+                    </div>
+                    <div id="transfers-table" class="table-wrap"></div>
+                    <div id="transfers-pagination" class="pagination"></div>
                 </div>
             </section>
 

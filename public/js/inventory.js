@@ -57,6 +57,8 @@ document.querySelector('#product-search-form').addEventListener('submit', (event
     loadProducts(document.querySelector('#product-search').value);
 });
 document.querySelector('#order-status').addEventListener('change', (event) => loadOrders(event.target.value));
+document.querySelector('#transfer-status').addEventListener('change', (event) => loadTransfers(event.target.value));
+document.querySelector('#warehouse-inventory-filter').addEventListener('change', (event) => loadWarehouseInventory(event.target.value));
 
 document.addEventListener('click', async (event) => {
     const trigger = event.target.closest('[data-action]');
@@ -72,6 +74,13 @@ document.addEventListener('click', async (event) => {
         'delete-supplier': () => removeRecord('supplier', `/suppliers/${id}`, loadSuppliers),
         'create-customer': () => openCustomerDialog(), 'edit-customer': () => editCustomer(id),
         'delete-customer': () => removeRecord('customer', `/customers/${id}`, loadCustomers),
+        'create-warehouse': () => openWarehouseDialog(), 'edit-warehouse': () => editWarehouse(id),
+        'delete-warehouse': () => removeRecord('warehouse', `/warehouses/${id}`, loadWarehouses),
+        'adjust-warehouse-stock': () => openWarehouseStockDialog(trigger.dataset.warehouse, trigger.dataset.product, trigger.dataset.name),
+        'create-transfer': openTransferDialog, 'view-transfer': () => viewTransfer(id),
+        'advance-transfer': () => updateTransferStatus(id, trigger.dataset.status),
+        'cancel-transfer': () => updateTransferStatus(id, 'Cancelled'),
+        'delete-transfer': () => removeRecord('draft transfer', `/stock-transfers/${id}`, loadTransfers),
         'adjust-stock': () => openStockDialog(id, trigger.dataset.name, trigger.dataset.mode),
         'view-stock': () => viewStockHistory(id, trigger.dataset.name),
         'create-order': openOrderDialog, 'view-order': () => viewOrder(id),
@@ -81,6 +90,8 @@ document.addEventListener('click', async (event) => {
         'page-products': () => loadProducts(document.querySelector('#product-search').value, trigger.dataset.url),
         'page-orders': () => loadOrders(document.querySelector('#order-status').value, trigger.dataset.url),
         'page-inventory': () => loadInventory(trigger.dataset.url),
+        'page-warehouse-inventory': () => loadWarehouseInventory(document.querySelector('#warehouse-inventory-filter').value, trigger.dataset.url),
+        'page-transfers': () => loadTransfers(document.querySelector('#transfer-status').value, trigger.dataset.url),
         'add-order-item': addOrderItemRow,
         'remove-order-item': () => trigger.closest('.order-item').remove(),
     };
@@ -125,7 +136,7 @@ async function openView(name) {
     document.querySelector('#page-title').textContent = capitalize(name);
     document.querySelector('#page-label').textContent = name === 'dashboard' ? 'Overview' : 'Workspace';
     showMessage('');
-    const loaders = { dashboard: loadDashboard, products: loadProducts, categories: loadCategories, suppliers: loadSuppliers, customers: loadCustomers, orders: loadOrders, inventory: loadInventory, reports: loadReports };
+    const loaders = { dashboard: loadDashboard, products: loadProducts, categories: loadCategories, suppliers: loadSuppliers, customers: loadCustomers, warehouses: loadWarehouses, transfers: loadTransfers, orders: loadOrders, inventory: loadInventory, reports: loadReports };
     try { await loaders[name](); } catch (exception) { showMessage(exception.message, 'error'); }
 }
 
@@ -166,6 +177,36 @@ async function loadCustomers() {
         if (canManage()) row.push(actionGroup([actionButton('Edit', 'edit-customer', customer.id), actionButton('Delete', 'delete-customer', customer.id, true)]));
         return row;
     }));
+}
+
+async function loadWarehouses() {
+    const warehouses = await api('/warehouses');
+    renderTable('#warehouses-table', ['Warehouse', 'Code', 'Address', 'Default', 'Status', ...(canManage() ? ['Actions'] : [])], warehouses.map((warehouse) => {
+        const row = [warehouse.name, warehouse.code, warehouse.address || '—', warehouse.is_default ? 'Yes' : 'No', badge(warehouse.status)];
+        if (canManage()) row.push(actionGroup([actionButton('Edit', 'edit-warehouse', warehouse.id), actionButton('Delete', 'delete-warehouse', warehouse.id, true)]));
+        return row;
+    }));
+    const filter = document.querySelector('#warehouse-inventory-filter');
+    const selected = filter.value;
+    filter.replaceChildren(new Option('All warehouses', ''), ...warehouses.map((warehouse) => new Option(warehouse.name, warehouse.id)));
+    filter.value = selected;
+    await loadWarehouseInventory(selected);
+}
+
+async function loadWarehouseInventory(warehouseId = '', url = null) {
+    const result = await api(url ? apiPath(url) : `/warehouse-inventory?warehouse_id=${encodeURIComponent(warehouseId)}`);
+    renderTable('#warehouse-inventory-table', ['Warehouse', 'Product', 'On hand', 'Reserved', 'Damaged', 'Available', 'Reorder level', ...(canManage() ? ['Actions'] : [])], result.data.map((balance) => {
+        const row = [balance.warehouse.name, balance.product.name, balance.on_hand_quantity, balance.reserved_quantity, balance.damaged_quantity, balance.available_quantity, balance.reorder_level];
+        if (canManage()) row.push(actionButton('Adjust', 'adjust-warehouse-stock', null, false, { warehouse: balance.warehouse_id, product: balance.product_id, name: `${balance.product.name} — ${balance.warehouse.name}` }));
+        return row;
+    }));
+    renderPagination('#warehouse-inventory-pagination', result, 'page-warehouse-inventory');
+}
+
+async function loadTransfers(status = '', url = null) {
+    const result = await api(url ? apiPath(url) : `/stock-transfers?status=${encodeURIComponent(status)}`);
+    renderTable('#transfers-table', ['Transfer', 'From', 'To', 'Status', 'Created', 'Actions'], result.data.map((transfer) => [transfer.transfer_number, transfer.source_warehouse.name, transfer.destination_warehouse.name, badge(transfer.status), date(transfer.created_at), transferActions(transfer)]));
+    renderPagination('#transfers-pagination', result, 'page-transfers');
 }
 
 async function loadOrders(status = '', url = null) {
@@ -219,6 +260,67 @@ async function openCustomerDialog(customer = null) {
     openDialog(customer ? 'Edit customer' : 'Add customer', [field('name', 'Name', 'text', customer?.name, true), field('email', 'Email', 'email', customer?.email, true), field('phone', 'Phone', 'text', customer?.phone), field('address', 'Address', 'textarea', customer?.address, false, true)], async (formData) => { await api(customer ? `/customers/${customer.id}` : '/customers', request(customer ? 'PUT' : 'POST', formData)); await loadCustomers(); });
 }
 async function editCustomer(id) { await openCustomerDialog(await api(`/customers/${id}`)); }
+
+async function openWarehouseDialog(warehouse = null) {
+    openDialog(warehouse ? 'Edit warehouse' : 'Add warehouse', [
+        field('name', 'Warehouse name', 'text', warehouse?.name, true),
+        field('code', 'Code', 'text', warehouse?.code, true),
+        selectField('status', 'Status', [['Active', 'Active'], ['Inactive', 'Inactive']], warehouse?.status || 'Active', true),
+        field('address', 'Address', 'textarea', warehouse?.address, false, true),
+    ], async (formData) => {
+        const payload = Object.fromEntries(formData.entries());
+        await api(warehouse ? `/warehouses/${warehouse.id}` : '/warehouses', { method: warehouse ? 'PUT' : 'POST', body: JSON.stringify(payload) });
+        await loadWarehouses();
+    });
+}
+async function editWarehouse(id) { await openWarehouseDialog(await api(`/warehouses/${id}`)); }
+
+function openWarehouseStockDialog(warehouseId, productId, name) {
+    openDialog(`Adjust stock — ${name}`, [
+        selectField('operation', 'Operation', [['add', 'Add stock'], ['remove', 'Remove stock'], ['damage', 'Mark damaged'], ['restore', 'Restore damaged']], 'add', true),
+        field('quantity', 'Quantity', 'number', 1, true, false, { min: 1 }),
+        field('reference', 'Reason or reference', 'text', '', true, true),
+    ], async (formData) => {
+        await api(`/warehouse-inventory/${warehouseId}/${productId}/adjust`, request('POST', formData));
+        await loadWarehouseInventory(document.querySelector('#warehouse-inventory-filter').value);
+    });
+}
+
+async function openTransferDialog() {
+    const [warehouses, productResult] = await Promise.all([api('/warehouses'), api('/products')]);
+    const activeWarehouses = warehouses.filter((warehouse) => warehouse.status === 'Active');
+    const products = productResult.data.filter((product) => product.status === 'Active');
+    if (activeWarehouses.length < 2) throw new Error('Create at least two active warehouses before making a transfer.');
+    const items = document.createElement('div'); items.className = 'order-items';
+    items.dataset.products = JSON.stringify(products.map(({ id, name, sku }) => ({ id, name, sku })));
+    const title = document.createElement('strong'); title.textContent = 'Transfer items'; items.append(title);
+    addOrderItemRow(items); items.append(actionButton('Add another item', 'add-order-item'));
+    const options = activeWarehouses.map((warehouse) => [warehouse.id, `${warehouse.name} (${warehouse.code})`]);
+    openDialog('Create stock transfer', [
+        selectField('source_warehouse_id', 'Source warehouse', options, '', true),
+        selectField('destination_warehouse_id', 'Destination warehouse', options, '', true),
+        field('notes', 'Notes', 'textarea', '', false, true), items,
+    ], async (formData) => {
+        const transferItems = [...dialogForm.querySelectorAll('.order-item')].map((row) => ({ product_id: Number(row.querySelector('[name="product_id"]').value), quantity: Number(row.querySelector('[name="quantity"]').value) }));
+        await api('/stock-transfers', { method: 'POST', body: JSON.stringify({ source_warehouse_id: Number(formData.get('source_warehouse_id')), destination_warehouse_id: Number(formData.get('destination_warehouse_id')), notes: formData.get('notes'), items: transferItems }) });
+        await loadTransfers();
+    });
+}
+
+async function viewTransfer(id) {
+    const transfer = await api(`/stock-transfers/${id}`);
+    const summary = document.createElement('p'); summary.className = 'full';
+    summary.textContent = `${transfer.source_warehouse.name} → ${transfer.destination_warehouse.name} · ${transfer.status}`;
+    const host = document.createElement('div'); host.className = 'table-wrap full';
+    openDialog(`Transfer ${transfer.transfer_number}`, [summary, host], null, true);
+    renderTableElement(host, ['Product', 'SKU', 'Quantity', 'Received'], transfer.items.map((item) => [item.product.name, item.product.sku, item.quantity, item.received_quantity]));
+}
+
+async function updateTransferStatus(id, status) {
+    if (!confirm(`Change this transfer to ${status}?`)) return;
+    await api(`/stock-transfers/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+    await loadTransfers(document.querySelector('#transfer-status').value);
+}
 
 function openStockDialog(id, name, mode) {
     openDialog(`${mode === 'add' ? 'Add' : 'Remove'} stock — ${name}`, [field('quantity', 'Quantity', 'number', 1, true, false, { min: 1 }), field('reference', 'Reason or reference', 'text', '', false, true)], async (formData) => { await api(`/inventory/${id}/${mode}`, request('POST', formData)); await loadInventory(); });
@@ -294,6 +396,16 @@ function orderActions(order) {
     if (next) buttons.push(actionButton(`Mark ${next}`, 'advance-order', order.id, false, { status: next }));
     if (['Pending', 'Confirmed', 'Processing'].includes(order.status)) buttons.push(actionButton('Cancel', 'cancel-order', order.id, true));
     if (order.status === 'Pending') buttons.push(actionButton('Delete', 'delete-order', order.id, true)); return actionGroup(buttons);
+}
+
+function transferActions(transfer) {
+    const buttons = [actionButton('View', 'view-transfer', transfer.id)];
+    if (!canManage()) return actionGroup(buttons);
+    const next = { Draft: 'Approved', Approved: 'In Transit', 'In Transit': 'Received' }[transfer.status];
+    if (next) buttons.push(actionButton(`Mark ${next}`, 'advance-transfer', transfer.id, false, { status: next }));
+    if (['Draft', 'Approved'].includes(transfer.status)) buttons.push(actionButton('Cancel', 'cancel-transfer', transfer.id, true));
+    if (transfer.status === 'Draft') buttons.push(actionButton('Delete', 'delete-transfer', transfer.id, true));
+    return actionGroup(buttons);
 }
 
 function openDialog(title, fields, handler, readOnly = false) {

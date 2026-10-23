@@ -20,6 +20,8 @@ class ExampleTest extends TestCase
             ->assertSee('id="categories-view"', false)
             ->assertSee('id="suppliers-view"', false)
             ->assertSee('id="customers-view"', false)
+            ->assertSee('id="warehouses-view"', false)
+            ->assertSee('id="transfers-view"', false)
             ->assertSee('id="record-dialog"', false)
             ->assertSee('data-action="create-order"', false)
             ->assertSee('/css/inventory.css', false)
