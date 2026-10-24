@@ -61,6 +61,16 @@ document.querySelector('#transfer-status').addEventListener('change', (event) =>
 document.querySelector('#purchase-status').addEventListener('change', (event) => loadPurchases(event.target.value));
 document.querySelector('#warehouse-inventory-filter').addEventListener('change', (event) => loadWarehouseInventory(event.target.value));
 document.querySelector('#return-status').addEventListener('change', (event) => loadReturns(event.target.value));
+document.querySelector('#notification-preferences-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    try {
+        currentUser = await api('/notification-preferences', { method: 'PUT', body: JSON.stringify({
+            in_app_notifications: document.querySelector('#in-app-notifications').checked,
+            email_notifications: document.querySelector('#email-notifications').checked,
+        }) });
+        showMessage('Notification preferences saved.');
+    } catch (exception) { showMessage(exception.message, 'error'); }
+});
 
 document.addEventListener('click', async (event) => {
     const trigger = event.target.closest('[data-action]');
@@ -107,6 +117,9 @@ document.addEventListener('click', async (event) => {
         'page-purchases': () => loadPurchases(document.querySelector('#purchase-status').value, trigger.dataset.url),
         'page-returns': () => loadReturns(document.querySelector('#return-status').value, trigger.dataset.url),
         'page-audits': () => loadAudits(trigger.dataset.url),
+        'page-notifications': () => loadNotifications(trigger.dataset.url),
+        'read-notification': async () => { await api(`/notifications/${id}/read`, { method: 'PATCH' }); await loadNotifications(); },
+        'read-all-notifications': async () => { await api('/notifications/read-all', { method: 'PATCH' }); await loadNotifications(); },
         'add-order-item': addOrderItemRow,
         'add-purchase-item': addPurchaseItemRow,
         'remove-order-item': () => trigger.closest('.order-item').remove(),
@@ -152,7 +165,7 @@ async function openView(name) {
     document.querySelector('#page-title').textContent = capitalize(name);
     document.querySelector('#page-label').textContent = name === 'dashboard' ? 'Overview' : 'Workspace';
     showMessage('');
-    const loaders = { dashboard: loadDashboard, products: loadProducts, categories: loadCategories, suppliers: loadSuppliers, purchases: loadPurchases, customers: loadCustomers, warehouses: loadWarehouses, transfers: loadTransfers, orders: loadOrders, returns: loadReturns, inventory: loadInventory, reports: loadReports, audits: loadAudits };
+    const loaders = { dashboard: loadDashboard, products: loadProducts, categories: loadCategories, suppliers: loadSuppliers, purchases: loadPurchases, customers: loadCustomers, warehouses: loadWarehouses, transfers: loadTransfers, orders: loadOrders, returns: loadReturns, inventory: loadInventory, reports: loadReports, audits: loadAudits, notifications: loadNotifications };
     try { await loaders[name](); } catch (exception) { showMessage(exception.message, 'error'); }
 }
 
@@ -270,6 +283,17 @@ async function loadAudits(url = null) {
         log.response_status, log.reason || '—',
     ]));
     renderPagination('#audits-pagination', result, 'page-audits');
+}
+
+async function loadNotifications(url = null) {
+    const result = await api(url ? apiPath(url) : '/notifications');
+    document.querySelector('#in-app-notifications').checked = currentUser.in_app_notifications;
+    document.querySelector('#email-notifications').checked = currentUser.email_notifications;
+    renderTable('#notifications-table', ['Status', 'Notification', 'Time', 'Action'], result.data.map((item) => [
+        item.read_at ? 'Read' : 'New', `${item.data.title}: ${item.data.message}`, dateTime(item.created_at),
+        item.read_at ? '—' : actionButton('Mark read', 'read-notification', item.id),
+    ]));
+    renderPagination('#notifications-pagination', result, 'page-notifications');
 }
 
 async function openCategoryDialog(category = null) {

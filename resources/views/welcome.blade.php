@@ -47,6 +47,7 @@
                 <button class="nav-button" data-view="inventory">Inventory</button>
                 <button class="nav-button" data-view="reports">Reports</button>
                 <button class="nav-button manager-action" data-view="audits">Audit Logs</button>
+                <button class="nav-button" data-view="notifications">Notifications</button>
             </nav>
 
             <button id="logout-button" class="logout-button">Sign out</button>
@@ -239,6 +240,25 @@
                     </div>
                     <div id="audits-table" class="table-wrap"></div>
                     <div id="audits-pagination" class="pagination"></div>
+                </div>
+            </section>
+
+            <section id="notifications-view" class="view" hidden>
+                <div class="panel">
+                    <div class="panel-heading">
+                        <div><p class="eyebrow">Updates</p><h2>Notifications</h2></div>
+                        <button class="secondary-button" data-action="read-all-notifications">Mark all as read</button>
+                    </div>
+                    <div id="notifications-table" class="table-wrap"></div>
+                    <div id="notifications-pagination" class="pagination"></div>
+                </div>
+                <div class="panel">
+                    <div class="panel-heading"><div><p class="eyebrow">Settings</p><h2>Notification preferences</h2></div></div>
+                    <form id="notification-preferences-form" class="inline-form">
+                        <label><input id="in-app-notifications" type="checkbox"> In-app notifications</label>
+                        <label><input id="email-notifications" type="checkbox"> Email notifications</label>
+                        <button class="primary-button">Save preferences</button>
+                    </form>
                 </div>
             </section>
         </div>

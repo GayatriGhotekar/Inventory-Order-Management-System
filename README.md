@@ -345,6 +345,32 @@ GET /api/permissions             Admin only
 
 In the browser, sign in as an admin or manager and choose **Audit Logs** from the sidebar.
 
+### Notifications and background jobs
+
+Low-stock checks run outside web requests using Laravel's database queue. The scheduler adds a scan every day at 8:00 AM, and the queue worker retries failed jobs three times. Duplicate alerts for the same user and product are prevented during the same day.
+
+Admins and managers receive low-stock alerts. Every user can open **Notifications**, mark messages as read, and choose in-app or email delivery. Development email uses Laravel's `log` mailer, so messages appear in `storage/logs/laravel.log` instead of being sent publicly.
+
+```text
+GET   /api/notifications
+PATCH /api/notifications/{id}/read
+PATCH /api/notifications/read-all
+PUT   /api/notification-preferences
+```
+
+To queue a low-stock scan immediately:
+
+```bash
+docker compose exec app php artisan notifications:low-stock
+```
+
+Useful queue commands:
+
+```bash
+docker compose exec app php artisan queue:failed
+docker compose exec app php artisan queue:retry all
+```
+
 ### Dashboard and Laravel reports
 
 ```text
@@ -407,6 +433,8 @@ Coverage includes:
 
 - Authentication and named-permission authorization
 - Audit logging for successful data changes
+- Queued low-stock notifications, preferences, and duplicate prevention
+- Daily scheduled jobs with retry and failed-job support
 - Validation and unique fields
 - CRUD behavior and filtering
 - Stock movements and negative-stock prevention
@@ -434,6 +462,9 @@ docker compose logs app nginx
 
 # Go service logs
 docker compose logs reporting
+
+# Queue worker and scheduler logs
+docker compose logs queue scheduler
 
 # Migration status
 docker compose exec app php artisan migrate:status

@@ -26,6 +26,40 @@ services:
     networks:
       - inventory-network
 
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: php artisan queue:work --tries=3 --backoff=30 --timeout=120
+    env_file:
+      - .env
+    volumes:
+      - .:/var/www/html
+      - vendor-data:/var/www/html/vendor
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - inventory-network
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: php artisan schedule:work
+    env_file:
+      - .env
+    volumes:
+      - .:/var/www/html
+      - vendor-data:/var/www/html/vendor
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - inventory-network
+
   reporting:
     build:
       context: ./go-reporting
