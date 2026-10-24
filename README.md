@@ -463,6 +463,23 @@ cd go-reporting
 go test ./...
 ```
 
+## Security and reliability
+
+- Login is limited to 5 attempts per minute for each email/IP combination.
+- Registration is limited to 5 attempts per hour per IP address.
+- Authenticated API users are limited to 120 requests per minute.
+- API tokens expire after 24 hours by default. Set `API_TOKEN_EXPIRATION_HOURS` to change this.
+- Responses include anti-clickjacking, MIME-sniffing, referrer, and browser-permission headers.
+- Database transactions and row locks protect important stock workflows.
+- Queue jobs have retry and failed-job handling.
+- GitHub Actions runs formatting, Laravel tests, migrations, OpenAPI validation, Go tests, and Go vet.
+
+Check PHP dependencies for known vulnerabilities:
+
+```bash
+docker compose exec app composer audit --locked
+```
+
 ## Useful commands
 
 ```bash
