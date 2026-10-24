@@ -43,8 +43,11 @@
                 <button class="nav-button" data-view="warehouses">Warehouses</button>
                 <button class="nav-button" data-view="transfers">Transfers</button>
                 <button class="nav-button" data-view="orders">Orders</button>
+                <button class="nav-button" data-view="returns">Returns</button>
                 <button class="nav-button" data-view="inventory">Inventory</button>
                 <button class="nav-button" data-view="reports">Reports</button>
+                <button class="nav-button manager-action" data-view="audits">Audit Logs</button>
+                <button class="nav-button" data-view="notifications">Notifications</button>
             </nav>
 
             <button id="logout-button" class="logout-button">Sign out</button>
@@ -202,7 +205,34 @@
                 </div>
             </section>
 
+            <section id="returns-view" class="view" hidden>
+                <div class="panel">
+                    <div class="panel-heading">
+                        <div><p class="eyebrow">After sales</p><h2>Returns and refunds</h2></div>
+                        <select id="return-status" aria-label="Filter returns by status">
+                            <option value="">All statuses</option><option>Requested</option><option>Approved</option>
+                            <option>Received</option><option>Refunded</option><option>Rejected</option>
+                        </select>
+                    </div>
+                    <div id="returns-table" class="table-wrap"></div>
+                    <div id="returns-pagination" class="pagination"></div>
+                </div>
+            </section>
+
             <section id="reports-view" class="view" hidden>
+                <div class="panel">
+                    <div class="panel-heading">
+                        <div><p class="eyebrow">Filtered metrics</p><h2>Operations analytics</h2></div>
+                        <form id="report-filter-form" class="inline-form">
+                            <input id="report-from" type="date" aria-label="Report start date">
+                            <input id="report-to" type="date" aria-label="Report end date">
+                            <select id="report-warehouse" aria-label="Report warehouse"><option value="">All warehouses</option></select>
+                            <button class="secondary-button">Apply</button>
+                        </form>
+                    </div>
+                    <div id="operations-summary" class="card-grid compact"></div>
+                    <div id="warehouse-performance-table" class="table-wrap"></div>
+                </div>
                 <div id="order-summary" class="card-grid compact"></div>
                 <div class="report-grid">
                     <div class="panel">
@@ -213,6 +243,35 @@
                         <div class="panel-heading"><div><p class="eyebrow">This year</p><h2>Monthly sales</h2></div></div>
                         <div id="monthly-sales-table" class="table-wrap"></div>
                     </div>
+                </div>
+            </section>
+
+            <section id="audits-view" class="view" hidden>
+                <div class="panel">
+                    <div class="panel-heading">
+                        <div><p class="eyebrow">Security</p><h2>Audit logs</h2></div>
+                    </div>
+                    <div id="audits-table" class="table-wrap"></div>
+                    <div id="audits-pagination" class="pagination"></div>
+                </div>
+            </section>
+
+            <section id="notifications-view" class="view" hidden>
+                <div class="panel">
+                    <div class="panel-heading">
+                        <div><p class="eyebrow">Updates</p><h2>Notifications</h2></div>
+                        <button class="secondary-button" data-action="read-all-notifications">Mark all as read</button>
+                    </div>
+                    <div id="notifications-table" class="table-wrap"></div>
+                    <div id="notifications-pagination" class="pagination"></div>
+                </div>
+                <div class="panel">
+                    <div class="panel-heading"><div><p class="eyebrow">Settings</p><h2>Notification preferences</h2></div></div>
+                    <form id="notification-preferences-form" class="inline-form">
+                        <label><input id="in-app-notifications" type="checkbox"> In-app notifications</label>
+                        <label><input id="email-notifications" type="checkbox"> Email notifications</label>
+                        <button class="primary-button">Save preferences</button>
+                    </form>
                 </div>
             </section>
         </div>

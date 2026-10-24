@@ -24,7 +24,9 @@ class PurchaseOrderController extends Controller
         $validator = Validator::make($request->all(), [
             'status' => ['nullable', Rule::in(['Draft', 'Approved', 'Partially Received', 'Received', 'Cancelled'])],
         ]);
-        if ($validator->fails()) return $this->validationError($validator->errors()->toArray());
+        if ($validator->fails()) {
+            return $this->validationError($validator->errors()->toArray());
+        }
 
         $orders = PurchaseOrder::with(['supplier', 'warehouse', 'creator:id,name'])
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->status))
@@ -45,7 +47,9 @@ class PurchaseOrderController extends Controller
             'items.*.quantity' => ['required', 'integer', 'min:1'],
             'items.*.unit_cost' => ['required', 'numeric', 'min:0'],
         ]);
-        if ($validator->fails()) return $this->validationError($validator->errors()->toArray());
+        if ($validator->fails()) {
+            return $this->validationError($validator->errors()->toArray());
+        }
         $data = $validator->validated();
 
         if (! Supplier::whereKey($data['supplier_id'])->where('status', 'Active')->exists()) {
@@ -69,6 +73,7 @@ class PurchaseOrderController extends Controller
                     'unit_cost' => $item['unit_cost'], 'total_cost' => round($item['quantity'] * $item['unit_cost'], 2),
                 ]);
             }
+
             return $purchaseOrder;
         });
 
@@ -83,7 +88,9 @@ class PurchaseOrderController extends Controller
     public function updateStatus(Request $request, PurchaseOrder $purchaseOrder): JsonResponse
     {
         $validator = Validator::make($request->all(), ['status' => ['required', Rule::in(['Approved', 'Cancelled'])]]);
-        if ($validator->fails()) return $this->validationError($validator->errors()->toArray());
+        if ($validator->fails()) {
+            return $this->validationError($validator->errors()->toArray());
+        }
         $newStatus = $validator->validated()['status'];
 
         if ($newStatus === 'Approved' && $purchaseOrder->status !== 'Draft') {
@@ -115,12 +122,16 @@ class PurchaseOrderController extends Controller
             'items.*.damaged_quantity' => ['required', 'integer', 'min:0'],
             'items.*.rejected_quantity' => ['required', 'integer', 'min:0'],
         ]);
-        if ($validator->fails()) return $this->validationError($validator->errors()->toArray());
+        if ($validator->fails()) {
+            return $this->validationError($validator->errors()->toArray());
+        }
 
         try {
             $receipt = DB::transaction(function () use ($request, $purchaseOrder, $validator) {
                 $order = PurchaseOrder::lockForUpdate()->findOrFail($purchaseOrder->id);
-                if (! in_array($order->status, ['Approved', 'Partially Received'], true)) throw new \DomainException('This purchase order can no longer receive goods');
+                if (! in_array($order->status, ['Approved', 'Partially Received'], true)) {
+                    throw new \DomainException('This purchase order can no longer receive goods');
+                }
 
                 $receipt = GoodsReceipt::create([
                     'receipt_number' => 'GRN-'.now()->format('YmdHis').'-'.Str::upper(Str::random(6)),
@@ -133,12 +144,18 @@ class PurchaseOrderController extends Controller
                 foreach ($validator->validated()['items'] as $received) {
                     $item = PurchaseOrderItem::where('purchase_order_id', $order->id)
                         ->whereKey($received['purchase_order_item_id'])->lockForUpdate()->first();
-                    if (! $item) throw new \DomainException('A received item does not belong to this purchase order');
+                    if (! $item) {
+                        throw new \DomainException('A received item does not belong to this purchase order');
+                    }
 
                     $processed = $received['accepted_quantity'] + $received['damaged_quantity'] + $received['rejected_quantity'];
                     $remaining = $item->quantity - $item->received_quantity;
-                    if ($processed < 1) throw new \DomainException('Each receipt item must contain at least one unit');
-                    if ($processed > $remaining) throw new \DomainException("Received quantity exceeds the remaining quantity for {$item->product->name}");
+                    if ($processed < 1) {
+                        throw new \DomainException('Each receipt item must contain at least one unit');
+                    }
+                    if ($processed > $remaining) {
+                        throw new \DomainException("Received quantity exceeds the remaining quantity for {$item->product->name}");
+                    }
 
                     $receipt->items()->create($received);
                     $item->increment('received_quantity', $processed);
@@ -163,6 +180,7 @@ class PurchaseOrderController extends Controller
 
                 $allReceived = ! $order->items()->whereColumn('received_quantity', '<', 'quantity')->exists();
                 $order->update(['status' => $allReceived ? 'Received' : 'Partially Received']);
+
                 return $receipt;
             });
         } catch (\DomainException $exception) {
@@ -174,8 +192,11 @@ class PurchaseOrderController extends Controller
 
     public function destroy(PurchaseOrder $purchaseOrder): JsonResponse
     {
-        if ($purchaseOrder->status !== 'Draft') return response()->json(['success' => false, 'message' => 'Only draft purchase orders can be deleted'], 409);
+        if ($purchaseOrder->status !== 'Draft') {
+            return response()->json(['success' => false, 'message' => 'Only draft purchase orders can be deleted'], 409);
+        }
         $purchaseOrder->delete();
+
         return response()->json(['success' => true, 'message' => 'Purchase order deleted successfully']);
     }
 

@@ -38,7 +38,7 @@ class AuthController extends Controller
             'message' => 'User registered successfully',
             'data' => [
                 'user' => $user,
-                'token' => $user->createToken('api-token')->plainTextToken,
+                'token' => $this->createToken($user),
             ],
         ], 201);
     }
@@ -72,7 +72,7 @@ class AuthController extends Controller
             'message' => 'Login successful',
             'data' => [
                 'user' => $user,
-                'token' => $user->createToken('api-token')->plainTextToken,
+                'token' => $this->createToken($user),
             ],
         ]);
     }
@@ -94,5 +94,12 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'Logout successful',
         ]);
+    }
+
+    private function createToken(User $user): string
+    {
+        $expiresAt = now()->addHours(config('inventory.token_expiration_hours'));
+
+        return $user->createToken('api-token', ['*'], $expiresAt)->plainTextToken;
     }
 }

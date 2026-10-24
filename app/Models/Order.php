@@ -14,10 +14,13 @@ class Order extends Model
     protected $fillable = [
         'order_number',
         'customer_id',
+        'warehouse_id',
         'status',
         'subtotal',
         'total',
         'created_by',
+        'inventory_reserved_at',
+        'inventory_deducted_at',
     ];
 
     protected function casts(): array
@@ -25,6 +28,8 @@ class Order extends Model
         return [
             'subtotal' => 'decimal:2',
             'total' => 'decimal:2',
+            'inventory_reserved_at' => 'datetime',
+            'inventory_deducted_at' => 'datetime',
         ];
     }
 
@@ -38,8 +43,28 @@ class Order extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function shipments(): HasMany
+    {
+        return $this->hasMany(OrderShipment::class);
+    }
+
+    public function statusHistory(): HasMany
+    {
+        return $this->hasMany(OrderStatusHistory::class);
+    }
+
+    public function returns(): HasMany
+    {
+        return $this->hasMany(OrderReturn::class);
     }
 }

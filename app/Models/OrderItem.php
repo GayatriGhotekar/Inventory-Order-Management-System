@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OrderItem extends Model
 {
@@ -15,6 +16,8 @@ class OrderItem extends Model
         'quantity',
         'unit_price',
         'total_price',
+        'packed_quantity',
+        'shipped_quantity',
     ];
 
     protected function casts(): array
@@ -23,6 +26,8 @@ class OrderItem extends Model
             'quantity' => 'integer',
             'unit_price' => 'decimal:2',
             'total_price' => 'decimal:2',
+            'packed_quantity' => 'integer',
+            'shipped_quantity' => 'integer',
         ];
     }
 
@@ -34,5 +39,10 @@ class OrderItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function returnItems(): HasMany
+    {
+        return $this->hasMany(OrderReturnItem::class);
     }
 }

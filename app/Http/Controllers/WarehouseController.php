@@ -18,7 +18,9 @@ class WarehouseController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validator = $this->validateWarehouse($request);
-        if ($validator->fails()) return $this->validationError($validator->errors()->toArray());
+        if ($validator->fails()) {
+            return $this->validationError($validator->errors()->toArray());
+        }
 
         if (($validator->validated()['is_default'] ?? false) === true) {
             return response()->json(['success' => false, 'message' => 'The default warehouse designation cannot be changed during the compatibility phase'], 409);
@@ -37,23 +39,33 @@ class WarehouseController extends Controller
     public function update(Request $request, Warehouse $warehouse): JsonResponse
     {
         $validator = $this->validateWarehouse($request, $warehouse);
-        if ($validator->fails()) return $this->validationError($validator->errors()->toArray());
+        if ($validator->fails()) {
+            return $this->validationError($validator->errors()->toArray());
+        }
         $data = $validator->validated();
         if (array_key_exists('is_default', $data) && (bool) $data['is_default'] !== $warehouse->is_default) {
             return response()->json(['success' => false, 'message' => 'The default warehouse designation cannot be changed during the compatibility phase'], 409);
         }
         $warehouse->update($data);
+
         return response()->json(['success' => true, 'message' => 'Warehouse updated successfully', 'data' => $warehouse->fresh()]);
     }
 
     public function destroy(Warehouse $warehouse): JsonResponse
     {
-        if ($warehouse->is_default) return response()->json(['success' => false, 'message' => 'The default warehouse cannot be deleted'], 409);
-        if ($warehouse->inventories()->where(function ($query) { $query->where('on_hand_quantity', '>', 0)->orWhere('reserved_quantity', '>', 0)->orWhere('damaged_quantity', '>', 0); })->exists()) {
+        if ($warehouse->is_default) {
+            return response()->json(['success' => false, 'message' => 'The default warehouse cannot be deleted'], 409);
+        }
+        if ($warehouse->inventories()->where(function ($query) {
+            $query->where('on_hand_quantity', '>', 0)->orWhere('reserved_quantity', '>', 0)->orWhere('damaged_quantity', '>', 0);
+        })->exists()) {
             return response()->json(['success' => false, 'message' => 'Warehouse cannot be deleted while it contains stock'], 409);
         }
-        if ($warehouse->outgoingTransfers()->exists() || $warehouse->incomingTransfers()->exists()) return response()->json(['success' => false, 'message' => 'Warehouse cannot be deleted because it has transfer history'], 409);
+        if ($warehouse->outgoingTransfers()->exists() || $warehouse->incomingTransfers()->exists()) {
+            return response()->json(['success' => false, 'message' => 'Warehouse cannot be deleted because it has transfer history'], 409);
+        }
         $warehouse->delete();
+
         return response()->json(['success' => true, 'message' => 'Warehouse deleted successfully']);
     }
 

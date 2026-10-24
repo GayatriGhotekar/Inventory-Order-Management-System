@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderReturn;
 use App\Models\Product;
+use App\Models\Warehouse;
+use App\Models\WarehouseInventory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -147,6 +150,58 @@ class ReportController extends Controller
             'message' => 'Low-stock products report retrieved successfully',
             'data' => $products,
         ]);
+    }
+
+    public function operations(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
+            'warehouse_id' => ['nullable', 'integer', 'exists:warehouses,id'],
+        ]);
+        $from = $data['from'] ?? today()->subDays(29)->toDateString();
+        $to = $data['to'] ?? today()->toDateString();
+        $warehouseId = $data['warehouse_id'] ?? null;
+
+        $orders = Order::whereBetween('created_at', [$from.' 00:00:00', $to.' 23:59:59'])
+            ->when($warehouseId, fn ($query) => $query->where('warehouse_id', $warehouseId))->get();
+        $delivered = $orders->where('status', 'Delivered');
+        $orderIds = $orders->pluck('id');
+        $returns = OrderReturn::whereIn('order_id', $orderIds)->where('status', 'Refunded')->get();
+        $fulfilmentHours = $delivered->map(fn (Order $order) => $order->created_at->diffInMinutes($order->updated_at) / 60);
+
+        $inventory = WarehouseInventory::with('product:id,name,price')
+            ->when($warehouseId, fn ($query) => $query->where('warehouse_id', $warehouseId))->get();
+        $inventoryValue = $inventory->sum(fn (WarehouseInventory $item) => $item->on_hand_quantity * (float) $item->product->price);
+
+        $warehouses = Warehouse::with('inventories.product:id,price')
+            ->when($warehouseId, fn ($query) => $query->whereKey($warehouseId))->get()
+            ->map(function (Warehouse $warehouse) use ($orders) {
+                $warehouseOrders = $orders->where('warehouse_id', $warehouse->id);
+
+                return [
+                    'id' => $warehouse->id,
+                    'name' => $warehouse->name,
+                    'orders' => $warehouseOrders->count(),
+                    'delivered_orders' => $warehouseOrders->where('status', 'Delivered')->count(),
+                    'revenue' => $this->money($warehouseOrders->where('status', 'Delivered')->sum('total')),
+                    'inventory_value' => $this->money($warehouse->inventories->sum(fn (WarehouseInventory $item) => $item->on_hand_quantity * (float) $item->product->price)),
+                ];
+            })->values();
+
+        return response()->json(['success' => true, 'message' => 'Operations report retrieved successfully', 'data' => [
+            'filters' => ['from' => $from, 'to' => $to, 'warehouse_id' => $warehouseId],
+            'total_orders' => $orders->count(),
+            'delivered_orders' => $delivered->count(),
+            'revenue' => $this->money($delivered->sum('total')),
+            'refunds' => $this->money($returns->sum('refund_amount')),
+            'return_rate' => $delivered->count() ? round($returns->count() / $delivered->count() * 100, 2) : 0,
+            'average_fulfilment_hours' => round($fulfilmentHours->average() ?? 0, 2),
+            'inventory_value' => $this->money($inventoryValue),
+            'low_stock_items' => $inventory->filter(fn (WarehouseInventory $item) => $item->available_quantity <= $item->reorder_level)->count(),
+            'dead_stock_items' => $inventory->filter(fn (WarehouseInventory $item) => $item->available_quantity === 0)->count(),
+            'warehouses' => $warehouses,
+        ]]);
     }
 
     private function validationError(array $errors): JsonResponse

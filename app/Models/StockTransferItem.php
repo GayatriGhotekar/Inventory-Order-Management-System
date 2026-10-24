@@ -14,6 +14,13 @@ class StockTransferItem extends Model
         return ['quantity' => 'integer', 'received_quantity' => 'integer'];
     }
 
-    public function transfer(): BelongsTo { return $this->belongsTo(StockTransfer::class, 'stock_transfer_id'); }
-    public function product(): BelongsTo { return $this->belongsTo(Product::class); }
+    public function transfer(): BelongsTo
+    {
+        return $this->belongsTo(StockTransfer::class, 'stock_transfer_id');
+    }
+
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
+    }
 }

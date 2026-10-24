@@ -78,6 +78,8 @@ The application uses Laravel as the primary backend/API layer, while a separate 
 - Multi-warehouse inventory with on-hand, reserved, damaged, and available balances
 - Transaction-safe warehouse transfers with approval, dispatch, and receipt stages
 - Supplier purchase orders with approval, partial goods receipt, and damaged/rejected quantity tracking
+- Warehouse-based order reservation, packing, shipment tracking, and status history
+- Partial product returns with inspection, restocking, damaged stock, and refund tracking
 - Low-stock detection
 - Order creation and status filtering
 - Transaction-safe order confirmation and cancellation
@@ -294,7 +296,7 @@ curl -X POST http://localhost:8088/api/orders \
 
 The server reads prices from the database and calculates every item total. Client-provided prices are not trusted.
 
-The normal status sequence is:
+The order fulfilment sequence is:
 
 ```text
 Pending -> Confirmed -> Processing -> Shipped -> Delivered
@@ -302,9 +304,72 @@ Pending -> Confirmed -> Processing -> Shipped -> Delivered
 
 Eligible orders may also become `Cancelled`.
 
-Confirming an order locks the order and product rows, checks all available stock, deducts stock, creates `ORDER` movements, and updates the status inside one database transaction. If any product has insufficient stock, every change is rolled back.
+Confirming an order reserves stock in its selected warehouse without deducting it. Processing marks all items packed. Shipping releases the reservation, deducts physical stock, creates `ORDER` movements, and records the carrier, tracking number, address, and shipment time. Every status change is stored in the order history.
 
-Cancelling a confirmed or processing order restores stock and creates `RETURN` movements. Status rules prevent the same order from deducting or restoring stock twice.
+Cancelling a confirmed or processing order releases its reservation. Status rules and timestamps prevent the same order from reserving or deducting stock twice.
+
+### Returns and refunds
+
+```text
+GET|POST          /api/returns
+GET               /api/returns/{id}
+PATCH             /api/returns/{id}/status
+POST              /api/returns/{id}/receive
+POST              /api/returns/{id}/refund
+```
+
+Returns follow:
+
+```text
+Requested -> Approved -> Received -> Refunded
+          \-> Rejected
+```
+
+Only delivered quantities can be returned. Restockable items increase available stock. Damaged items are added to physical stock but excluded from available stock. Refunds are tracked internally; no external payment gateway is called.
+
+### Permissions and audit logs
+
+The API uses easy-to-read named permissions instead of checking roles inside controllers. Examples include `catalog.manage`, `inventory.adjust`, `orders.create`, and `orders.manage`.
+
+- Admin: all permissions and the permission matrix
+- Manager: operational permissions and audit logs
+- Staff: create orders and request returns; read-only access elsewhere
+
+Every successful POST, PUT, PATCH, and DELETE request is recorded with the user, action, time, response status, IP address, and safe request values. Password fields are never stored.
+
+```text
+GET /api/audit-logs              Admin and manager
+GET /api/audit-logs?action=order Filter by action
+GET /api/permissions             Admin only
+```
+
+In the browser, sign in as an admin or manager and choose **Audit Logs** from the sidebar.
+
+### Notifications and background jobs
+
+Low-stock checks run outside web requests using Laravel's database queue. The scheduler adds a scan every day at 8:00 AM, and the queue worker retries failed jobs three times. Duplicate alerts for the same user and product are prevented during the same day.
+
+Admins and managers receive low-stock alerts. Every user can open **Notifications**, mark messages as read, and choose in-app or email delivery. Development email uses Laravel's `log` mailer, so messages appear in `storage/logs/laravel.log` instead of being sent publicly.
+
+```text
+GET   /api/notifications
+PATCH /api/notifications/{id}/read
+PATCH /api/notifications/read-all
+PUT   /api/notification-preferences
+```
+
+To queue a low-stock scan immediately:
+
+```bash
+docker compose exec app php artisan notifications:low-stock
+```
+
+Useful queue commands:
+
+```bash
+docker compose exec app php artisan queue:failed
+docker compose exec app php artisan queue:retry all
+```
 
 ### Dashboard and Laravel reports
 
@@ -319,6 +384,17 @@ GET /api/reports/low-stock
 ```
 
 Only `Delivered` orders contribute to sales and best-selling-product totals. A product is low on stock when `stock_quantity <= low_stock_limit`.
+
+### Operations analytics
+
+The **Reports** screen includes a 30-day operations summary with revenue, refunds, return rate, average fulfilment time, inventory value, low/out-of-stock counts, and warehouse performance. Use the date and warehouse fields to narrow the results.
+
+```text
+GET /api/reports/operations
+GET /api/reports/operations?from=2026-10-01&to=2026-10-31&warehouse_id=1
+```
+
+Revenue and fulfilment use delivered orders. Refund totals use completed refunds. Inventory valuation uses the current product selling price, so it is an estimated retail value rather than accounting cost or profit.
 
 ## Go reporting service
 
@@ -366,13 +442,17 @@ Tests use an in-memory SQLite database configured in `tests/TestCase.php`. They 
 
 Coverage includes:
 
-- Authentication and role authorization
+- Authentication and named-permission authorization
+- Audit logging for successful data changes
+- Queued low-stock notifications, preferences, and duplicate prevention
+- Daily scheduled jobs with retry and failed-job support
 - Validation and unique fields
 - CRUD behavior and filtering
 - Stock movements and negative-stock prevention
 - Order totals and database prices
 - Confirmation, rollback, cancellation, and status rules
 - Dashboard and report calculations
+- Date- and warehouse-filtered operations analytics
 - Complete creation-to-delivery workflow
 - Swagger page and OpenAPI JSON integrity
 
@@ -381,6 +461,23 @@ The Go unit tests run automatically while its Docker image is built. They can al
 ```bash
 cd go-reporting
 go test ./...
+```
+
+## Security and reliability
+
+- Login is limited to 5 attempts per minute for each email/IP combination.
+- Registration is limited to 5 attempts per hour per IP address.
+- Authenticated API users are limited to 120 requests per minute.
+- API tokens expire after 24 hours by default. Set `API_TOKEN_EXPIRATION_HOURS` to change this.
+- Responses include anti-clickjacking, MIME-sniffing, referrer, and browser-permission headers.
+- Database transactions and row locks protect important stock workflows.
+- Queue jobs have retry and failed-job handling.
+- GitHub Actions runs formatting, Laravel tests, migrations, OpenAPI validation, Go tests, and Go vet.
+
+Check PHP dependencies for known vulnerabilities:
+
+```bash
+docker compose exec app composer audit --locked
 ```
 
 ## Useful commands
@@ -394,6 +491,9 @@ docker compose logs app nginx
 
 # Go service logs
 docker compose logs reporting
+
+# Queue worker and scheduler logs
+docker compose logs queue scheduler
 
 # Migration status
 docker compose exec app php artisan migrate:status
@@ -432,14 +532,27 @@ routes/                     Web and API routes
 tests/Feature/              Laravel feature and integration tests
 docker/                     Nginx and PHP container configuration
 compose.yaml                Docker services and private network
+compose.production.yaml     Production container configuration
+docs/portfolio/             Architecture, workflows, and deployment guides
+scripts/                    Deployment and database safety scripts
 ```
+
+## Deployment and portfolio documents
+
+- [System architecture](docs/portfolio/ARCHITECTURE.md)
+- [Database overview](docs/portfolio/DATABASE.md)
+- [Business workflow diagrams](docs/portfolio/WORKFLOWS.md)
+- [Production deployment](docs/portfolio/DEPLOYMENT.md)
+- [Resume bullets and known limitations](docs/portfolio/PORTFOLIO.md)
+
+For a production deployment, copy `.env.production.example` to `.env.production`, replace every placeholder secret, configure HTTPS at the hosting proxy, and run `./scripts/deploy.sh`.
 
 ## Important implementation choices
 
 - Controllers and Eloquent models are used directly to keep the project understandable.
 - Database transactions protect multi-table stock and order changes.
 - `lockForUpdate()` prevents concurrent confirmation or cancellation from changing the same rows twice.
-- Sanctum tokens protect the API, while role middleware handles authorization.
+- Sanctum tokens protect the API, while named permissions handle authorization.
 - Reports use direct Eloquent or SQL aggregation queries.
 - The Go service remains small and read-only.
 - API data is rendered with DOM methods instead of inserting untrusted HTML.
@@ -454,37 +567,4 @@ docker compose build reporting
 curl http://localhost:8088/api/health
 curl http://localhost:8090/health
 ```
-
-## Final Verification:
-
-Run the following commands to verify that all services are working correctly: 
-
-```bash
-docker compose config --quiet
-docker  compose exec app php artisan test 
-docker compose builde reporting 
-curl http://localhost:8088/api/health
-curl http://localhost:8090/health
-```
-
-### Verification Results 
-
-```bash
-PHP formatting: 67 files passed
-Laravel tests: 49 passed, 218 assertions
-Go tests: passed during Docker build
-Docker Compose configuration: valid
-Laravel health: working
-Go health: working
-Swagger: HTTP 200
-Application: HTTP 200
-MySQL: healthy
-```
-
-
-
-
-
-
-
 

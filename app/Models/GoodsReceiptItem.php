@@ -14,6 +14,13 @@ class GoodsReceiptItem extends Model
         return ['accepted_quantity' => 'integer', 'damaged_quantity' => 'integer', 'rejected_quantity' => 'integer'];
     }
 
-    public function receipt(): BelongsTo { return $this->belongsTo(GoodsReceipt::class, 'goods_receipt_id'); }
-    public function purchaseOrderItem(): BelongsTo { return $this->belongsTo(PurchaseOrderItem::class); }
+    public function receipt(): BelongsTo
+    {
+        return $this->belongsTo(GoodsReceipt::class, 'goods_receipt_id');
+    }
+
+    public function purchaseOrderItem(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseOrderItem::class);
+    }
 }

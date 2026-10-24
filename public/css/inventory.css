@@ -84,6 +84,7 @@ th { color: var(--muted); font-size: 11px; letter-spacing: .07em; text-transform
 .purchase-item { grid-template-columns: minmax(190px, 1fr) 100px 120px auto; }
 .receipt-item { display: grid; grid-template-columns: minmax(190px, 1fr) repeat(3, 100px); gap: 10px; align-items: end; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .receipt-product { align-self: center; font-weight: 700; }
+.return-request-item, .return-inspection-item { display: grid; grid-template-columns: minmax(220px, 1fr) 180px; gap: 12px; align-items: end; padding: 12px 0; border-bottom: 1px solid var(--line); }
 
 @media (max-width: 960px) {
     .card-grid { grid-template-columns: repeat(2, 1fr); }
@@ -105,4 +106,5 @@ th { color: var(--muted); font-size: 11px; letter-spacing: .07em; text-transform
     .form-field.full { grid-column: auto; }
     .order-item { grid-template-columns: 1fr; }
     .purchase-item, .receipt-item { grid-template-columns: 1fr; }
+    .return-request-item, .return-inspection-item { grid-template-columns: 1fr; }
 }

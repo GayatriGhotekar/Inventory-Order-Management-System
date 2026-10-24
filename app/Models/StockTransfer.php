@@ -15,10 +15,33 @@ class StockTransfer extends Model
         return ['approved_at' => 'datetime', 'dispatched_at' => 'datetime', 'received_at' => 'datetime'];
     }
 
-    public function sourceWarehouse(): BelongsTo { return $this->belongsTo(Warehouse::class, 'source_warehouse_id'); }
-    public function destinationWarehouse(): BelongsTo { return $this->belongsTo(Warehouse::class, 'destination_warehouse_id'); }
-    public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
-    public function approver(): BelongsTo { return $this->belongsTo(User::class, 'approved_by'); }
-    public function receiver(): BelongsTo { return $this->belongsTo(User::class, 'received_by'); }
-    public function items(): HasMany { return $this->hasMany(StockTransferItem::class); }
+    public function sourceWarehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class, 'source_warehouse_id');
+    }
+
+    public function destinationWarehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class, 'destination_warehouse_id');
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function receiver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'received_by');
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(StockTransferItem::class);
+    }
 }
