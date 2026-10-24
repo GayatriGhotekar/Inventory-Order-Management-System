@@ -19,10 +19,13 @@ class StockTransferController extends Controller
     public function index(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), ['status' => ['nullable', Rule::in(['Draft', 'Approved', 'In Transit', 'Received', 'Cancelled'])]]);
-        if ($validator->fails()) return $this->validationError($validator->errors()->toArray());
+        if ($validator->fails()) {
+            return $this->validationError($validator->errors()->toArray());
+        }
         $transfers = StockTransfer::with(['sourceWarehouse', 'destinationWarehouse', 'creator:id,name'])
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->status))
             ->latest()->paginate(15)->withQueryString();
+
         return response()->json(['success' => true, 'message' => 'Stock transfers retrieved successfully', 'data' => $transfers]);
     }
 
@@ -36,7 +39,9 @@ class StockTransferController extends Controller
             'items.*.product_id' => ['required', 'integer', 'distinct', 'exists:products,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
         ]);
-        if ($validator->fails()) return $this->validationError($validator->errors()->toArray());
+        if ($validator->fails()) {
+            return $this->validationError($validator->errors()->toArray());
+        }
         $data = $validator->validated();
         if (! Warehouse::whereKey($data['source_warehouse_id'])->where('status', 'Active')->exists() || ! Warehouse::whereKey($data['destination_warehouse_id'])->where('status', 'Active')->exists()) {
             return response()->json(['success' => false, 'message' => 'Both warehouses must be active'], 422);
@@ -47,9 +52,13 @@ class StockTransferController extends Controller
                 'source_warehouse_id' => $data['source_warehouse_id'], 'destination_warehouse_id' => $data['destination_warehouse_id'],
                 'status' => 'Draft', 'notes' => $data['notes'] ?? null, 'created_by' => $request->user()->id,
             ]);
-            foreach ($data['items'] as $item) $transfer->items()->create($item);
+            foreach ($data['items'] as $item) {
+                $transfer->items()->create($item);
+            }
+
             return $transfer;
         });
+
         return response()->json(['success' => true, 'message' => 'Stock transfer created successfully', 'data' => $this->loadTransfer($transfer)], 201);
     }
 
@@ -61,18 +70,25 @@ class StockTransferController extends Controller
     public function updateStatus(Request $request, StockTransfer $stockTransfer): JsonResponse
     {
         $validator = Validator::make($request->all(), ['status' => ['required', Rule::in(['Approved', 'In Transit', 'Received', 'Cancelled'])]]);
-        if ($validator->fails()) return $this->validationError($validator->errors()->toArray());
+        if ($validator->fails()) {
+            return $this->validationError($validator->errors()->toArray());
+        }
         try {
             $transfer = DB::transaction(function () use ($request, $stockTransfer, $validator) {
                 $transfer = StockTransfer::lockForUpdate()->findOrFail($stockTransfer->id);
                 $newStatus = $validator->validated()['status'];
                 if ($newStatus === 'Cancelled') {
-                    if (! in_array($transfer->status, ['Draft', 'Approved'], true)) throw new \DomainException("A {$transfer->status} transfer cannot be cancelled");
+                    if (! in_array($transfer->status, ['Draft', 'Approved'], true)) {
+                        throw new \DomainException("A {$transfer->status} transfer cannot be cancelled");
+                    }
                     $transfer->update(['status' => 'Cancelled']);
+
                     return $transfer;
                 }
                 $expected = ['Draft' => 'Approved', 'Approved' => 'In Transit', 'In Transit' => 'Received'][$transfer->status] ?? null;
-                if ($expected !== $newStatus) throw new \DomainException("Transfer cannot move from {$transfer->status} to {$newStatus}");
+                if ($expected !== $newStatus) {
+                    throw new \DomainException("Transfer cannot move from {$transfer->status} to {$newStatus}");
+                }
                 if ($newStatus === 'Approved') {
                     $this->ensureSourceStock($transfer);
                     $transfer->update(['status' => 'Approved', 'approved_by' => $request->user()->id, 'approved_at' => now()]);
@@ -83,18 +99,23 @@ class StockTransferController extends Controller
                     $this->receive($transfer, $request->user()->id);
                     $transfer->update(['status' => 'Received', 'received_by' => $request->user()->id, 'received_at' => now()]);
                 }
+
                 return $transfer;
             });
         } catch (\DomainException $exception) {
             return response()->json(['success' => false, 'message' => $exception->getMessage()], 409);
         }
+
         return response()->json(['success' => true, 'message' => 'Stock transfer status updated successfully', 'data' => $this->loadTransfer($transfer)]);
     }
 
     public function destroy(StockTransfer $stockTransfer): JsonResponse
     {
-        if ($stockTransfer->status !== 'Draft') return response()->json(['success' => false, 'message' => 'Only draft transfers can be deleted'], 409);
+        if ($stockTransfer->status !== 'Draft') {
+            return response()->json(['success' => false, 'message' => 'Only draft transfers can be deleted'], 409);
+        }
         $stockTransfer->delete();
+
         return response()->json(['success' => true, 'message' => 'Stock transfer deleted successfully']);
     }
 
@@ -103,7 +124,9 @@ class StockTransferController extends Controller
         $transfer->load('items.product');
         foreach ($transfer->items->sortBy('product_id') as $item) {
             $balance = WarehouseInventory::where('warehouse_id', $transfer->source_warehouse_id)->where('product_id', $item->product_id)->lockForUpdate()->first();
-            if (! $balance || $balance->available_quantity < $item->quantity) throw new \DomainException("Insufficient available stock for {$item->product->name}");
+            if (! $balance || $balance->available_quantity < $item->quantity) {
+                throw new \DomainException("Insufficient available stock for {$item->product->name}");
+            }
         }
     }
 

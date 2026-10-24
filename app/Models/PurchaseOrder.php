@@ -15,10 +15,33 @@ class PurchaseOrder extends Model
         return ['expected_date' => 'date', 'total' => 'decimal:2', 'approved_at' => 'datetime'];
     }
 
-    public function supplier(): BelongsTo { return $this->belongsTo(Supplier::class); }
-    public function warehouse(): BelongsTo { return $this->belongsTo(Warehouse::class); }
-    public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
-    public function approver(): BelongsTo { return $this->belongsTo(User::class, 'approved_by'); }
-    public function items(): HasMany { return $this->hasMany(PurchaseOrderItem::class); }
-    public function receipts(): HasMany { return $this->hasMany(GoodsReceipt::class); }
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class);
+    }
+
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(PurchaseOrderItem::class);
+    }
+
+    public function receipts(): HasMany
+    {
+        return $this->hasMany(GoodsReceipt::class);
+    }
 }
