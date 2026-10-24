@@ -75,6 +75,9 @@ The application uses Laravel as the primary backend/API layer, while a separate 
 - Supplier and customer CRUD
 - Product search, filtering, and pagination
 - Stock additions, removals, and movement history
+- Multi-warehouse inventory with on-hand, reserved, damaged, and available balances
+- Transaction-safe warehouse transfers with approval, dispatch, and receipt stages
+- Supplier purchase orders with approval, partial goods receipt, and damaged/rejected quantity tracking
 - Low-stock detection
 - Order creation and status filtering
 - Transaction-safe order confirmation and cancellation
@@ -228,6 +231,46 @@ curl -X POST http://localhost:8088/api/inventory/1/add \
 Stock cannot become negative. Every change creates a movement with its type, quantity, previous stock, new stock, reference, user, and timestamp.
 
 Movement types are `IN`, `OUT`, `ORDER`, `ADJUSTMENT`, and `RETURN`.
+
+### Warehouses and stock transfers
+
+```text
+GET|POST          /api/warehouses
+GET|PUT|DELETE    /api/warehouses/{id}
+GET               /api/warehouse-inventory
+POST              /api/warehouse-inventory/{warehouse}/{product}/adjust
+
+GET|POST          /api/stock-transfers
+GET|DELETE        /api/stock-transfers/{id}
+PATCH             /api/stock-transfers/{id}/status
+```
+
+Existing stock is assigned to a default warehouse during migration. Transfers follow:
+
+```text
+Draft -> Approved -> In Transit -> Received
+                  \-> Cancelled
+```
+
+Dispatch atomically removes stock from the source warehouse. Receipt atomically adds it to the destination. Every change creates a warehouse-linked stock movement.
+
+### Purchase orders and goods receipt
+
+```text
+GET|POST          /api/purchase-orders
+GET|DELETE        /api/purchase-orders/{id}
+PATCH             /api/purchase-orders/{id}/status
+POST              /api/purchase-orders/{id}/receive
+```
+
+Purchase orders follow:
+
+```text
+Draft -> Approved -> Partially Received -> Received
+      \-> Cancelled
+```
+
+Accepted goods increase warehouse and total product stock. Damaged and rejected goods remain recorded on the goods receipt but do not increase available inventory.
 
 ### Orders
 

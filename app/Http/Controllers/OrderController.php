@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\StockMovement;
+use App\Models\Warehouse;
+use App\Models\WarehouseInventory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -198,11 +200,17 @@ class OrderController extends Controller
             ->lockForUpdate()
             ->get()
             ->keyBy('id');
+        $warehouse = Warehouse::where('is_default', true)->firstOrFail();
+        foreach ($products as $product) {
+            WarehouseInventory::firstOrCreate(['warehouse_id' => $warehouse->id, 'product_id' => $product->id], ['on_hand_quantity' => $product->stock_quantity, 'reorder_level' => $product->low_stock_limit]);
+        }
+        $balances = WarehouseInventory::where('warehouse_id', $warehouse->id)->whereIn('product_id', $productIds)
+            ->orderBy('product_id')->lockForUpdate()->get()->keyBy('product_id');
 
         foreach ($order->items as $item) {
             $product = $products[$item->product_id];
 
-            if ($product->stock_quantity < $item->quantity) {
+            if (! isset($balances[$item->product_id]) || $balances[$item->product_id]->available_quantity < $item->quantity) {
                 return response()->json([
                     'success' => false,
                     'message' => "Insufficient stock for {$product->name}",
@@ -216,8 +224,10 @@ class OrderController extends Controller
             $newStock = $previousStock - $item->quantity;
 
             $product->update(['stock_quantity' => $newStock]);
+            $balances[$item->product_id]->decrement('on_hand_quantity', $item->quantity);
             StockMovement::create([
                 'product_id' => $product->id,
+                'warehouse_id' => $warehouse->id,
                 'type' => 'ORDER',
                 'quantity' => $item->quantity,
                 'previous_stock' => $previousStock,
@@ -249,6 +259,12 @@ class OrderController extends Controller
                 ->lockForUpdate()
                 ->get()
                 ->keyBy('id');
+            $warehouse = Warehouse::where('is_default', true)->firstOrFail();
+            foreach ($products as $product) {
+                WarehouseInventory::firstOrCreate(['warehouse_id' => $warehouse->id, 'product_id' => $product->id], ['on_hand_quantity' => $product->stock_quantity, 'reorder_level' => $product->low_stock_limit]);
+            }
+            $balances = WarehouseInventory::where('warehouse_id', $warehouse->id)->whereIn('product_id', $productIds)
+                ->orderBy('product_id')->lockForUpdate()->get()->keyBy('product_id');
 
             foreach ($order->items as $item) {
                 $product = $products[$item->product_id];
@@ -256,8 +272,10 @@ class OrderController extends Controller
                 $newStock = $previousStock + $item->quantity;
 
                 $product->update(['stock_quantity' => $newStock]);
+                $balances[$item->product_id]->increment('on_hand_quantity', $item->quantity);
                 StockMovement::create([
                     'product_id' => $product->id,
+                    'warehouse_id' => $warehouse->id,
                     'type' => 'RETURN',
                     'quantity' => $item->quantity,
                     'previous_stock' => $previousStock,

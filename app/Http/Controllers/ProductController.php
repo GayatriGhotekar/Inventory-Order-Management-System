@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\StockMovement;
+use App\Models\Warehouse;
+use App\Models\WarehouseInventory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -47,10 +49,18 @@ class ProductController extends Controller
 
         $product = DB::transaction(function () use ($request, $validator) {
             $product = Product::create($validator->validated());
+            $defaultWarehouse = Warehouse::where('is_default', true)->firstOrFail();
+            WarehouseInventory::create([
+                'warehouse_id' => $defaultWarehouse->id,
+                'product_id' => $product->id,
+                'on_hand_quantity' => $product->stock_quantity,
+                'reorder_level' => $product->low_stock_limit,
+            ]);
 
             if ($product->stock_quantity > 0) {
                 StockMovement::create([
                     'product_id' => $product->id,
+                    'warehouse_id' => $defaultWarehouse->id,
                     'type' => 'IN',
                     'quantity' => $product->stock_quantity,
                     'previous_stock' => 0,
@@ -90,12 +100,26 @@ class ProductController extends Controller
         $product = DB::transaction(function () use ($request, $product, $validator) {
             $lockedProduct = Product::lockForUpdate()->findOrFail($product->id);
             $previousStock = $lockedProduct->stock_quantity;
+            $defaultWarehouse = Warehouse::where('is_default', true)->firstOrFail();
+            $balance = WarehouseInventory::firstOrCreate(
+                ['warehouse_id' => $defaultWarehouse->id, 'product_id' => $lockedProduct->id],
+                ['on_hand_quantity' => $previousStock, 'reorder_level' => $lockedProduct->low_stock_limit],
+            );
+            $balance = WarehouseInventory::lockForUpdate()->findOrFail($balance->id);
 
             $lockedProduct->update($validator->validated());
 
             if ($previousStock !== $lockedProduct->stock_quantity) {
+                $difference = $lockedProduct->stock_quantity - $previousStock;
+                if ($balance->on_hand_quantity + $difference < $balance->reserved_quantity + $balance->damaged_quantity) {
+                    throw new \DomainException('The default warehouse does not have enough available stock for this adjustment');
+                }
+                $difference > 0
+                    ? $balance->increment('on_hand_quantity', $difference)
+                    : $balance->decrement('on_hand_quantity', abs($difference));
                 StockMovement::create([
                     'product_id' => $lockedProduct->id,
+                    'warehouse_id' => $defaultWarehouse->id,
                     'type' => 'ADJUSTMENT',
                     'quantity' => abs($lockedProduct->stock_quantity - $previousStock),
                     'previous_stock' => $previousStock,

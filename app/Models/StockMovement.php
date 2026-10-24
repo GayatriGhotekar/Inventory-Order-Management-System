@@ -11,6 +11,7 @@ class StockMovement extends Model
 
     protected $fillable = [
         'product_id',
+        'warehouse_id',
         'type',
         'quantity',
         'previous_stock',
@@ -32,6 +33,11 @@ class StockMovement extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class);
     }
 
     public function creator(): BelongsTo

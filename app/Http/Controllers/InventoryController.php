@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\StockMovement;
+use App\Models\Warehouse;
+use App\Models\WarehouseInventory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -65,14 +67,19 @@ class InventoryController extends Controller
 
         $result = DB::transaction(function () use ($request, $product, $validator) {
             $lockedProduct = Product::lockForUpdate()->findOrFail($product->id);
+            $warehouse = Warehouse::where('is_default', true)->firstOrFail();
+            $balance = WarehouseInventory::firstOrCreate(['warehouse_id' => $warehouse->id, 'product_id' => $product->id], ['on_hand_quantity' => $lockedProduct->stock_quantity, 'reorder_level' => $lockedProduct->low_stock_limit]);
+            $balance = WarehouseInventory::lockForUpdate()->findOrFail($balance->id);
             $quantity = $validator->validated()['quantity'];
             $previousStock = $lockedProduct->stock_quantity;
             $newStock = $previousStock + $quantity;
 
             $lockedProduct->update(['stock_quantity' => $newStock]);
+            $balance->increment('on_hand_quantity', $quantity);
 
             $movement = StockMovement::create([
                 'product_id' => $lockedProduct->id,
+                'warehouse_id' => $warehouse->id,
                 'type' => 'IN',
                 'quantity' => $quantity,
                 'previous_stock' => $previousStock,
@@ -101,9 +108,12 @@ class InventoryController extends Controller
 
         $result = DB::transaction(function () use ($request, $product, $validator) {
             $lockedProduct = Product::lockForUpdate()->findOrFail($product->id);
+            $warehouse = Warehouse::where('is_default', true)->firstOrFail();
+            $balance = WarehouseInventory::firstOrCreate(['warehouse_id' => $warehouse->id, 'product_id' => $product->id], ['on_hand_quantity' => $lockedProduct->stock_quantity, 'reorder_level' => $lockedProduct->low_stock_limit]);
+            $balance = WarehouseInventory::lockForUpdate()->findOrFail($balance->id);
             $quantity = $validator->validated()['quantity'];
 
-            if ($quantity > $lockedProduct->stock_quantity) {
+            if ($quantity > $balance->available_quantity) {
                 return null;
             }
 
@@ -111,9 +121,11 @@ class InventoryController extends Controller
             $newStock = $previousStock - $quantity;
 
             $lockedProduct->update(['stock_quantity' => $newStock]);
+            $balance->decrement('on_hand_quantity', $quantity);
 
             $movement = StockMovement::create([
                 'product_id' => $lockedProduct->id,
+                'warehouse_id' => $warehouse->id,
                 'type' => 'OUT',
                 'quantity' => $quantity,
                 'previous_stock' => $previousStock,
