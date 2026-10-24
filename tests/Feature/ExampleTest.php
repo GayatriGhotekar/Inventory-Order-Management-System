@@ -19,6 +19,7 @@ class ExampleTest extends TestCase
             ->assertSee('id="login-form"', false)
             ->assertSee('id="categories-view"', false)
             ->assertSee('id="suppliers-view"', false)
+            ->assertSee('id="purchases-view"', false)
             ->assertSee('id="customers-view"', false)
             ->assertSee('id="warehouses-view"', false)
             ->assertSee('id="transfers-view"', false)
@@ -34,5 +35,6 @@ class ExampleTest extends TestCase
         $this->assertStringContainsString("'create-product'", $script);
         $this->assertStringContainsString("'adjust-stock'", $script);
         $this->assertStringContainsString("'advance-order'", $script);
+        $this->assertStringContainsString("'receive-purchase'", $script);
     }
 }

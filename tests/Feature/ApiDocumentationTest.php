@@ -37,6 +37,8 @@ class ApiDocumentationTest extends TestCase
             '/api/warehouse-inventory',
             '/api/stock-transfers',
             '/api/stock-transfers/{id}/status',
+            '/api/purchase-orders',
+            '/api/purchase-orders/{id}/receive',
             '/api/dashboard',
             '/api/reports/daily-sales',
             '/reports/sales-summary',

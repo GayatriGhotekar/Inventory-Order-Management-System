@@ -81,6 +81,9 @@ th { color: var(--muted); font-size: 11px; letter-spacing: .07em; text-transform
 .dialog-actions { margin-top: 18px; justify-content: flex-end; }
 .order-items { grid-column: 1 / -1; display: grid; gap: 10px; }
 .order-item { display: grid; grid-template-columns: 1fr 120px auto; gap: 8px; align-items: end; }
+.purchase-item { grid-template-columns: minmax(190px, 1fr) 100px 120px auto; }
+.receipt-item { display: grid; grid-template-columns: minmax(190px, 1fr) repeat(3, 100px); gap: 10px; align-items: end; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.receipt-product { align-self: center; font-weight: 700; }
 
 @media (max-width: 960px) {
     .card-grid { grid-template-columns: repeat(2, 1fr); }
@@ -101,4 +104,5 @@ th { color: var(--muted); font-size: 11px; letter-spacing: .07em; text-transform
     .form-grid { grid-template-columns: 1fr; }
     .form-field.full { grid-column: auto; }
     .order-item { grid-template-columns: 1fr; }
+    .purchase-item, .receipt-item { grid-template-columns: 1fr; }
 }

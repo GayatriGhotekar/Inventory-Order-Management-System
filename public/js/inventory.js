@@ -58,6 +58,7 @@ document.querySelector('#product-search-form').addEventListener('submit', (event
 });
 document.querySelector('#order-status').addEventListener('change', (event) => loadOrders(event.target.value));
 document.querySelector('#transfer-status').addEventListener('change', (event) => loadTransfers(event.target.value));
+document.querySelector('#purchase-status').addEventListener('change', (event) => loadPurchases(event.target.value));
 document.querySelector('#warehouse-inventory-filter').addEventListener('change', (event) => loadWarehouseInventory(event.target.value));
 
 document.addEventListener('click', async (event) => {
@@ -74,6 +75,11 @@ document.addEventListener('click', async (event) => {
         'delete-supplier': () => removeRecord('supplier', `/suppliers/${id}`, loadSuppliers),
         'create-customer': () => openCustomerDialog(), 'edit-customer': () => editCustomer(id),
         'delete-customer': () => removeRecord('customer', `/customers/${id}`, loadCustomers),
+        'create-purchase': openPurchaseDialog, 'view-purchase': () => viewPurchase(id),
+        'approve-purchase': () => updatePurchaseStatus(id, 'Approved'),
+        'cancel-purchase': () => updatePurchaseStatus(id, 'Cancelled'),
+        'receive-purchase': () => openReceiptDialog(id),
+        'delete-purchase': () => removeRecord('draft purchase order', `/purchase-orders/${id}`, loadPurchases),
         'create-warehouse': () => openWarehouseDialog(), 'edit-warehouse': () => editWarehouse(id),
         'delete-warehouse': () => removeRecord('warehouse', `/warehouses/${id}`, loadWarehouses),
         'adjust-warehouse-stock': () => openWarehouseStockDialog(trigger.dataset.warehouse, trigger.dataset.product, trigger.dataset.name),
@@ -92,7 +98,9 @@ document.addEventListener('click', async (event) => {
         'page-inventory': () => loadInventory(trigger.dataset.url),
         'page-warehouse-inventory': () => loadWarehouseInventory(document.querySelector('#warehouse-inventory-filter').value, trigger.dataset.url),
         'page-transfers': () => loadTransfers(document.querySelector('#transfer-status').value, trigger.dataset.url),
+        'page-purchases': () => loadPurchases(document.querySelector('#purchase-status').value, trigger.dataset.url),
         'add-order-item': addOrderItemRow,
+        'add-purchase-item': addPurchaseItemRow,
         'remove-order-item': () => trigger.closest('.order-item').remove(),
     };
     if (!actions[action]) return;
@@ -136,7 +144,7 @@ async function openView(name) {
     document.querySelector('#page-title').textContent = capitalize(name);
     document.querySelector('#page-label').textContent = name === 'dashboard' ? 'Overview' : 'Workspace';
     showMessage('');
-    const loaders = { dashboard: loadDashboard, products: loadProducts, categories: loadCategories, suppliers: loadSuppliers, customers: loadCustomers, warehouses: loadWarehouses, transfers: loadTransfers, orders: loadOrders, inventory: loadInventory, reports: loadReports };
+    const loaders = { dashboard: loadDashboard, products: loadProducts, categories: loadCategories, suppliers: loadSuppliers, purchases: loadPurchases, customers: loadCustomers, warehouses: loadWarehouses, transfers: loadTransfers, orders: loadOrders, inventory: loadInventory, reports: loadReports };
     try { await loaders[name](); } catch (exception) { showMessage(exception.message, 'error'); }
 }
 
@@ -168,6 +176,15 @@ async function loadSuppliers() {
         if (canManage()) row.push(actionGroup([actionButton('Edit', 'edit-supplier', supplier.id), actionButton('Delete', 'delete-supplier', supplier.id, true)]));
         return row;
     }));
+}
+
+async function loadPurchases(status = '', url = null) {
+    const result = await api(url ? apiPath(url) : `/purchase-orders?status=${encodeURIComponent(status)}`);
+    renderTable('#purchases-table', ['Purchase order', 'Supplier', 'Warehouse', 'Status', 'Total', 'Expected', 'Actions'], result.data.map((order) => [
+        order.purchase_order_number, order.supplier.name, order.warehouse.name, badge(order.status),
+        currency(order.total), order.expected_date ? date(order.expected_date) : '—', purchaseActions(order),
+    ]));
+    renderPagination('#purchases-pagination', result, 'page-purchases');
 }
 
 async function loadCustomers() {
@@ -255,6 +272,103 @@ async function openSupplierDialog(supplier = null) {
     openDialog(supplier ? 'Edit supplier' : 'Add supplier', [field('name', 'Name', 'text', supplier?.name, true), field('email', 'Email', 'email', supplier?.email, true), field('phone', 'Phone', 'text', supplier?.phone), selectField('status', 'Status', [['Active', 'Active'], ['Inactive', 'Inactive']], supplier?.status || 'Active', true), field('address', 'Address', 'textarea', supplier?.address, false, true)], async (formData) => { await api(supplier ? `/suppliers/${supplier.id}` : '/suppliers', request(supplier ? 'PUT' : 'POST', formData)); await loadSuppliers(); });
 }
 async function editSupplier(id) { await openSupplierDialog(await api(`/suppliers/${id}`)); }
+
+async function openPurchaseDialog() {
+    const [suppliers, warehouses, productResult] = await Promise.all([api('/suppliers'), api('/warehouses'), api('/products')]);
+    const activeSuppliers = suppliers.filter((supplier) => supplier.status === 'Active');
+    const activeWarehouses = warehouses.filter((warehouse) => warehouse.status === 'Active');
+    const products = productResult.data.filter((product) => product.status === 'Active');
+    if (!activeSuppliers.length) throw new Error('Create an active supplier before creating a purchase order.');
+    if (!activeWarehouses.length) throw new Error('Create an active warehouse before creating a purchase order.');
+    if (!products.length) throw new Error('Create an active product before creating a purchase order.');
+
+    const items = document.createElement('div'); items.className = 'order-items';
+    items.dataset.products = JSON.stringify(products.map(({ id, name, sku }) => ({ id, name, sku })));
+    const title = document.createElement('strong'); title.textContent = 'Products to purchase'; items.append(title);
+    addPurchaseItemRow(items); items.append(actionButton('Add another product', 'add-purchase-item'));
+
+    openDialog('Create purchase order', [
+        selectField('supplier_id', 'Supplier', activeSuppliers.map((supplier) => [supplier.id, supplier.name]), '', true),
+        selectField('warehouse_id', 'Receiving warehouse', activeWarehouses.map((warehouse) => [warehouse.id, warehouse.name]), '', true),
+        field('expected_date', 'Expected date', 'date'),
+        field('notes', 'Notes', 'textarea', '', false, true), items,
+    ], async (formData) => {
+        const purchaseItems = [...dialogForm.querySelectorAll('.purchase-item')].map((row) => ({
+            product_id: Number(row.querySelector('[name="product_id"]').value),
+            quantity: Number(row.querySelector('[name="quantity"]').value),
+            unit_cost: Number(row.querySelector('[name="unit_cost"]').value),
+        }));
+        await api('/purchase-orders', { method: 'POST', body: JSON.stringify({
+            supplier_id: Number(formData.get('supplier_id')), warehouse_id: Number(formData.get('warehouse_id')),
+            expected_date: formData.get('expected_date') || null, notes: formData.get('notes'), items: purchaseItems,
+        }) });
+        await loadPurchases();
+    });
+}
+
+function addPurchaseItemRow(container = null) {
+    const items = container || dialogFields.querySelector('.order-items');
+    const products = JSON.parse(items.dataset.products);
+    const row = document.createElement('div'); row.className = 'order-item purchase-item';
+    row.append(
+        selectField('product_id', 'Product', products.map((product) => [product.id, `${product.name} (${product.sku})`]), '', true),
+        field('quantity', 'Quantity', 'number', 1, true, false, { min: 1 }),
+        field('unit_cost', 'Unit cost', 'number', 0, true, false, { min: 0, step: '0.01' }),
+        actionButton('Remove', 'remove-order-item', null, true),
+    );
+    const add = items.querySelector('[data-action="add-purchase-item"]'); add ? items.insertBefore(row, add) : items.append(row);
+}
+
+async function viewPurchase(id) {
+    const order = await api(`/purchase-orders/${id}`);
+    const summary = document.createElement('p'); summary.className = 'full';
+    summary.textContent = `${order.supplier.name} → ${order.warehouse.name} · ${order.status} · ${currency(order.total)}`;
+    const host = document.createElement('div'); host.className = 'table-wrap full';
+    openDialog(`Purchase order ${order.purchase_order_number}`, [summary, host], null, true);
+    renderTableElement(host, ['Product', 'Ordered', 'Processed', 'Remaining', 'Unit cost', 'Total'], order.items.map((item) => [
+        item.product.name, item.quantity, item.received_quantity, item.quantity - item.received_quantity,
+        currency(item.unit_cost), currency(item.total_cost),
+    ]));
+}
+
+async function updatePurchaseStatus(id, status) {
+    if (!confirm(`Change this purchase order to ${status}?`)) return;
+    await api(`/purchase-orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+    await loadPurchases(document.querySelector('#purchase-status').value);
+}
+
+async function openReceiptDialog(id) {
+    const order = await api(`/purchase-orders/${id}`);
+    const outstanding = order.items.filter((item) => item.received_quantity < item.quantity);
+    if (!outstanding.length) throw new Error('This purchase order has no outstanding items.');
+
+    const receiptItems = document.createElement('div'); receiptItems.className = 'order-items';
+    const title = document.createElement('strong'); title.textContent = 'Quantities received'; receiptItems.append(title);
+    outstanding.forEach((item) => {
+        const row = document.createElement('div'); row.className = 'receipt-item'; row.dataset.itemId = item.id;
+        const product = document.createElement('div'); product.className = 'receipt-product';
+        product.textContent = `${item.product.name} — ${item.quantity - item.received_quantity} remaining`;
+        row.append(product, field('accepted_quantity', 'Accepted', 'number', 0, true, false, { min: 0 }), field('damaged_quantity', 'Damaged', 'number', 0, true, false, { min: 0 }), field('rejected_quantity', 'Rejected', 'number', 0, true, false, { min: 0 }));
+        receiptItems.append(row);
+    });
+
+    openDialog(`Receive ${order.purchase_order_number}`, [
+        field('supplier_invoice_reference', 'Supplier invoice reference', 'text'),
+        field('notes', 'Receipt notes', 'textarea', '', false, true), receiptItems,
+    ], async (formData) => {
+        const items = [...dialogForm.querySelectorAll('.receipt-item')].map((row) => ({
+            purchase_order_item_id: Number(row.dataset.itemId),
+            accepted_quantity: Number(row.querySelector('[name="accepted_quantity"]').value),
+            damaged_quantity: Number(row.querySelector('[name="damaged_quantity"]').value),
+            rejected_quantity: Number(row.querySelector('[name="rejected_quantity"]').value),
+        })).filter((item) => item.accepted_quantity + item.damaged_quantity + item.rejected_quantity > 0);
+        if (!items.length) throw new Error('Enter at least one received quantity.');
+        await api(`/purchase-orders/${id}/receive`, { method: 'POST', body: JSON.stringify({
+            supplier_invoice_reference: formData.get('supplier_invoice_reference'), notes: formData.get('notes'), items,
+        }) });
+        await loadPurchases(document.querySelector('#purchase-status').value);
+    });
+}
 
 async function openCustomerDialog(customer = null) {
     openDialog(customer ? 'Edit customer' : 'Add customer', [field('name', 'Name', 'text', customer?.name, true), field('email', 'Email', 'email', customer?.email, true), field('phone', 'Phone', 'text', customer?.phone), field('address', 'Address', 'textarea', customer?.address, false, true)], async (formData) => { await api(customer ? `/customers/${customer.id}` : '/customers', request(customer ? 'PUT' : 'POST', formData)); await loadCustomers(); });
@@ -405,6 +519,18 @@ function transferActions(transfer) {
     if (next) buttons.push(actionButton(`Mark ${next}`, 'advance-transfer', transfer.id, false, { status: next }));
     if (['Draft', 'Approved'].includes(transfer.status)) buttons.push(actionButton('Cancel', 'cancel-transfer', transfer.id, true));
     if (transfer.status === 'Draft') buttons.push(actionButton('Delete', 'delete-transfer', transfer.id, true));
+    return actionGroup(buttons);
+}
+
+function purchaseActions(order) {
+    const buttons = [actionButton('View', 'view-purchase', order.id)];
+    if (!canManage()) return actionGroup(buttons);
+    if (order.status === 'Draft') {
+        buttons.push(actionButton('Approve', 'approve-purchase', order.id));
+        buttons.push(actionButton('Delete', 'delete-purchase', order.id, true));
+    }
+    if (['Approved', 'Partially Received'].includes(order.status)) buttons.push(actionButton('Receive', 'receive-purchase', order.id));
+    if (['Draft', 'Approved'].includes(order.status)) buttons.push(actionButton('Cancel', 'cancel-purchase', order.id, true));
     return actionGroup(buttons);
 }
 

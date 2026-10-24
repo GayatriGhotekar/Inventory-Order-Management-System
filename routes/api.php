@@ -7,6 +7,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\StockTransferController;
@@ -40,6 +41,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/warehouse-inventory', [WarehouseInventoryController::class, 'index']);
     Route::get('/stock-transfers', [StockTransferController::class, 'index']);
     Route::get('/stock-transfers/{stockTransfer}', [StockTransferController::class, 'show']);
+    Route::get('/purchase-orders', [PurchaseOrderController::class, 'index']);
+    Route::get('/purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'show']);
 
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::prefix('reports')->group(function () {
@@ -80,5 +83,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/stock-transfers', [StockTransferController::class, 'store']);
         Route::patch('/stock-transfers/{stockTransfer}/status', [StockTransferController::class, 'updateStatus']);
         Route::delete('/stock-transfers/{stockTransfer}', [StockTransferController::class, 'destroy']);
+        Route::post('/purchase-orders', [PurchaseOrderController::class, 'store']);
+        Route::patch('/purchase-orders/{purchaseOrder}/status', [PurchaseOrderController::class, 'updateStatus']);
+        Route::post('/purchase-orders/{purchaseOrder}/receive', [PurchaseOrderController::class, 'receive']);
+        Route::delete('/purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'destroy']);
     });
 });

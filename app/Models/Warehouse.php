@@ -28,4 +28,9 @@ class Warehouse extends Model
     {
         return $this->hasMany(StockTransfer::class, 'destination_warehouse_id');
     }
+
+    public function purchaseOrders(): HasMany
+    {
+        return $this->hasMany(PurchaseOrder::class);
+    }
 }

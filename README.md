@@ -77,6 +77,7 @@ The application uses Laravel as the primary backend/API layer, while a separate 
 - Stock additions, removals, and movement history
 - Multi-warehouse inventory with on-hand, reserved, damaged, and available balances
 - Transaction-safe warehouse transfers with approval, dispatch, and receipt stages
+- Supplier purchase orders with approval, partial goods receipt, and damaged/rejected quantity tracking
 - Low-stock detection
 - Order creation and status filtering
 - Transaction-safe order confirmation and cancellation
@@ -252,6 +253,24 @@ Draft -> Approved -> In Transit -> Received
 ```
 
 Dispatch atomically removes stock from the source warehouse. Receipt atomically adds it to the destination. Every change creates a warehouse-linked stock movement.
+
+### Purchase orders and goods receipt
+
+```text
+GET|POST          /api/purchase-orders
+GET|DELETE        /api/purchase-orders/{id}
+PATCH             /api/purchase-orders/{id}/status
+POST              /api/purchase-orders/{id}/receive
+```
+
+Purchase orders follow:
+
+```text
+Draft -> Approved -> Partially Received -> Received
+      \-> Cancelled
+```
+
+Accepted goods increase warehouse and total product stock. Damaged and rejected goods remain recorded on the goods receipt but do not increase available inventory.
 
 ### Orders
 

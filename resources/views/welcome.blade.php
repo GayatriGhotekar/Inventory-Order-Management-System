@@ -38,6 +38,7 @@
                 <button class="nav-button" data-view="products">Products</button>
                 <button class="nav-button" data-view="categories">Categories</button>
                 <button class="nav-button" data-view="suppliers">Suppliers</button>
+                <button class="nav-button" data-view="purchases">Purchases</button>
                 <button class="nav-button" data-view="customers">Customers</button>
                 <button class="nav-button" data-view="warehouses">Warehouses</button>
                 <button class="nav-button" data-view="transfers">Transfers</button>
@@ -120,6 +121,23 @@
                         <button class="primary-button manager-action" data-action="create-customer">Add customer</button>
                     </div>
                     <div id="customers-table" class="table-wrap"></div>
+                </div>
+            </section>
+
+            <section id="purchases-view" class="view" hidden>
+                <div class="panel">
+                    <div class="panel-heading">
+                        <div><p class="eyebrow">Purchasing</p><h2>Purchase orders</h2></div>
+                        <div class="heading-actions">
+                            <select id="purchase-status" aria-label="Filter purchase orders by status">
+                                <option value="">All statuses</option><option>Draft</option><option>Approved</option>
+                                <option>Partially Received</option><option>Received</option><option>Cancelled</option>
+                            </select>
+                            <button class="primary-button manager-action" data-action="create-purchase">Create purchase order</button>
+                        </div>
+                    </div>
+                    <div id="purchases-table" class="table-wrap"></div>
+                    <div id="purchases-pagination" class="pagination"></div>
                 </div>
             </section>
 
