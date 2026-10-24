@@ -6,6 +6,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\OrderReturnController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\ReportController;
@@ -43,6 +44,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/stock-transfers/{stockTransfer}', [StockTransferController::class, 'show']);
     Route::get('/purchase-orders', [PurchaseOrderController::class, 'index']);
     Route::get('/purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'show']);
+    Route::get('/returns', [OrderReturnController::class, 'index']);
+    Route::post('/returns', [OrderReturnController::class, 'store']);
+    Route::get('/returns/{orderReturn}', [OrderReturnController::class, 'show']);
 
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::prefix('reports')->group(function () {
@@ -87,5 +91,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/purchase-orders/{purchaseOrder}/status', [PurchaseOrderController::class, 'updateStatus']);
         Route::post('/purchase-orders/{purchaseOrder}/receive', [PurchaseOrderController::class, 'receive']);
         Route::delete('/purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'destroy']);
+        Route::patch('/returns/{orderReturn}/status', [OrderReturnController::class, 'updateStatus']);
+        Route::post('/returns/{orderReturn}/receive', [OrderReturnController::class, 'receive']);
+        Route::post('/returns/{orderReturn}/refund', [OrderReturnController::class, 'refund']);
     });
 });

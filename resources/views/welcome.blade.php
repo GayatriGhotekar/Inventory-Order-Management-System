@@ -43,6 +43,7 @@
                 <button class="nav-button" data-view="warehouses">Warehouses</button>
                 <button class="nav-button" data-view="transfers">Transfers</button>
                 <button class="nav-button" data-view="orders">Orders</button>
+                <button class="nav-button" data-view="returns">Returns</button>
                 <button class="nav-button" data-view="inventory">Inventory</button>
                 <button class="nav-button" data-view="reports">Reports</button>
             </nav>
@@ -199,6 +200,20 @@
                     <div class="panel-heading"><div><p class="eyebrow">Inventory</p><h2>Stock overview</h2></div></div>
                     <div id="inventory-table" class="table-wrap"></div>
                     <div id="inventory-pagination" class="pagination"></div>
+                </div>
+            </section>
+
+            <section id="returns-view" class="view" hidden>
+                <div class="panel">
+                    <div class="panel-heading">
+                        <div><p class="eyebrow">After sales</p><h2>Returns and refunds</h2></div>
+                        <select id="return-status" aria-label="Filter returns by status">
+                            <option value="">All statuses</option><option>Requested</option><option>Approved</option>
+                            <option>Received</option><option>Refunded</option><option>Rejected</option>
+                        </select>
+                    </div>
+                    <div id="returns-table" class="table-wrap"></div>
+                    <div id="returns-pagination" class="pagination"></div>
                 </div>
             </section>
 

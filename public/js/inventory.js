@@ -60,6 +60,7 @@ document.querySelector('#order-status').addEventListener('change', (event) => lo
 document.querySelector('#transfer-status').addEventListener('change', (event) => loadTransfers(event.target.value));
 document.querySelector('#purchase-status').addEventListener('change', (event) => loadPurchases(event.target.value));
 document.querySelector('#warehouse-inventory-filter').addEventListener('change', (event) => loadWarehouseInventory(event.target.value));
+document.querySelector('#return-status').addEventListener('change', (event) => loadReturns(event.target.value));
 
 document.addEventListener('click', async (event) => {
     const trigger = event.target.closest('[data-action]');
@@ -93,12 +94,18 @@ document.addEventListener('click', async (event) => {
         'advance-order': () => trigger.dataset.status === 'Shipped' ? openShipmentDialog(id) : updateOrderStatus(id, trigger.dataset.status),
         'cancel-order': () => updateOrderStatus(id, 'Cancelled'),
         'delete-order': () => removeRecord('pending order', `/orders/${id}`, loadOrders),
+        'request-return': () => openReturnRequestDialog(id), 'view-return': () => viewReturn(id),
+        'approve-return': () => updateReturnStatus(id, 'Approved'),
+        'reject-return': () => updateReturnStatus(id, 'Rejected'),
+        'receive-return': () => openReturnInspectionDialog(id),
+        'refund-return': () => refundReturn(id),
         'page-products': () => loadProducts(document.querySelector('#product-search').value, trigger.dataset.url),
         'page-orders': () => loadOrders(document.querySelector('#order-status').value, trigger.dataset.url),
         'page-inventory': () => loadInventory(trigger.dataset.url),
         'page-warehouse-inventory': () => loadWarehouseInventory(document.querySelector('#warehouse-inventory-filter').value, trigger.dataset.url),
         'page-transfers': () => loadTransfers(document.querySelector('#transfer-status').value, trigger.dataset.url),
         'page-purchases': () => loadPurchases(document.querySelector('#purchase-status').value, trigger.dataset.url),
+        'page-returns': () => loadReturns(document.querySelector('#return-status').value, trigger.dataset.url),
         'add-order-item': addOrderItemRow,
         'add-purchase-item': addPurchaseItemRow,
         'remove-order-item': () => trigger.closest('.order-item').remove(),
@@ -144,7 +151,7 @@ async function openView(name) {
     document.querySelector('#page-title').textContent = capitalize(name);
     document.querySelector('#page-label').textContent = name === 'dashboard' ? 'Overview' : 'Workspace';
     showMessage('');
-    const loaders = { dashboard: loadDashboard, products: loadProducts, categories: loadCategories, suppliers: loadSuppliers, purchases: loadPurchases, customers: loadCustomers, warehouses: loadWarehouses, transfers: loadTransfers, orders: loadOrders, inventory: loadInventory, reports: loadReports };
+    const loaders = { dashboard: loadDashboard, products: loadProducts, categories: loadCategories, suppliers: loadSuppliers, purchases: loadPurchases, customers: loadCustomers, warehouses: loadWarehouses, transfers: loadTransfers, orders: loadOrders, returns: loadReturns, inventory: loadInventory, reports: loadReports };
     try { await loaders[name](); } catch (exception) { showMessage(exception.message, 'error'); }
 }
 
@@ -230,6 +237,15 @@ async function loadOrders(status = '', url = null) {
     const result = await api(url ? apiPath(url) : `/orders?status=${encodeURIComponent(status)}`);
     renderTable('#orders-table', ['Order', 'Customer', 'Warehouse', 'Status', 'Total', 'Created', 'Actions'], result.data.map((order) => [order.order_number, order.customer?.name || '—', order.warehouse?.name || '—', badge(order.status), currency(order.total), date(order.created_at), orderActions(order)]));
     renderPagination('#orders-pagination', result, 'page-orders');
+}
+
+async function loadReturns(status = '', url = null) {
+    const result = await api(url ? apiPath(url) : `/returns?status=${encodeURIComponent(status)}`);
+    renderTable('#returns-table', ['Return', 'Order', 'Customer', 'Reason', 'Status', 'Refund', 'Actions'], result.data.map((item) => [
+        item.return_number, item.order.order_number, item.order.customer?.name || '—', item.reason,
+        badge(item.status), currency(item.refund_amount), returnActions(item),
+    ]));
+    renderPagination('#returns-pagination', result, 'page-returns');
 }
 
 async function loadInventory(url = null) {
@@ -501,6 +517,77 @@ async function openShipmentDialog(id) {
     });
 }
 
+async function openReturnRequestDialog(orderId) {
+    const order = await api(`/orders/${orderId}`);
+    const returnItems = document.createElement('div'); returnItems.className = 'order-items';
+    const title = document.createElement('strong'); title.textContent = 'Items to return'; returnItems.append(title);
+    order.items.forEach((item) => {
+        const row = document.createElement('div'); row.className = 'return-request-item'; row.dataset.itemId = item.id;
+        const label = document.createElement('div'); label.className = 'receipt-product';
+        label.textContent = `${item.product.name} — ${item.shipped_quantity} delivered`;
+        row.append(label, field('quantity', 'Return quantity', 'number', 0, true, false, { min: 0, max: item.shipped_quantity }));
+        returnItems.append(row);
+    });
+
+    openDialog(`Request return — ${order.order_number}`, [
+        field('reason', 'Reason', 'text', '', true),
+        field('notes', 'Notes', 'textarea', '', false, true), returnItems,
+    ], async (formData) => {
+        const items = [...dialogForm.querySelectorAll('.return-request-item')].map((row) => ({
+            order_item_id: Number(row.dataset.itemId), quantity: Number(row.querySelector('[name="quantity"]').value),
+        })).filter((item) => item.quantity > 0);
+        if (!items.length) throw new Error('Enter a return quantity for at least one item.');
+        await api('/returns', { method: 'POST', body: JSON.stringify({
+            order_id: order.id, reason: formData.get('reason'), notes: formData.get('notes'), items,
+        }) });
+        await openView('returns');
+    });
+}
+
+async function viewReturn(id) {
+    const item = await api(`/returns/${id}`);
+    const summary = document.createElement('p'); summary.className = 'full';
+    summary.textContent = `${item.order.order_number} · ${item.reason} · ${item.status} · Refund ${currency(item.refund_amount)}`;
+    const host = document.createElement('div'); host.className = 'table-wrap full';
+    openDialog(`Return ${item.return_number}`, [summary, host], null, true);
+    renderTableElement(host, ['Product', 'Quantity', 'Condition', 'Unit refund', 'Refund'], item.items.map((returnItem) => [
+        returnItem.order_item.product.name, returnItem.quantity, returnItem.condition,
+        currency(returnItem.unit_refund), currency(returnItem.refund_amount),
+    ]));
+}
+
+async function updateReturnStatus(id, status) {
+    if (!confirm(`${status} this return request?`)) return;
+    await api(`/returns/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+    await loadReturns(document.querySelector('#return-status').value);
+}
+
+async function openReturnInspectionDialog(id) {
+    const item = await api(`/returns/${id}`);
+    const inspectedItems = document.createElement('div'); inspectedItems.className = 'order-items';
+    const title = document.createElement('strong'); title.textContent = 'Inspect every returned item'; inspectedItems.append(title);
+    item.items.forEach((returnItem) => {
+        const row = document.createElement('div'); row.className = 'return-inspection-item'; row.dataset.itemId = returnItem.id;
+        const label = document.createElement('div'); label.className = 'receipt-product';
+        label.textContent = `${returnItem.order_item.product.name} — quantity ${returnItem.quantity}`;
+        row.append(label, selectField('condition', 'Condition', [['Restock', 'Restock'], ['Damaged', 'Damaged']], 'Restock', true));
+        inspectedItems.append(row);
+    });
+    openDialog(`Receive ${item.return_number}`, [inspectedItems], async () => {
+        const items = [...dialogForm.querySelectorAll('.return-inspection-item')].map((row) => ({
+            order_return_item_id: Number(row.dataset.itemId), condition: row.querySelector('[name="condition"]').value,
+        }));
+        await api(`/returns/${id}/receive`, { method: 'POST', body: JSON.stringify({ items }) });
+        await loadReturns(document.querySelector('#return-status').value);
+    });
+}
+
+async function refundReturn(id) {
+    if (!confirm('Record this return as refunded? This does not contact a payment gateway.')) return;
+    await api(`/returns/${id}/refund`, { method: 'POST' });
+    await loadReturns(document.querySelector('#return-status').value);
+}
+
 async function removeRecord(label, path, reload) {
     if (!confirm(`Delete this ${label}? This action cannot be undone.`)) return;
     await api(path, { method: 'DELETE' }); await reload();
@@ -521,11 +608,25 @@ function inventoryActions(product) {
 }
 
 function orderActions(order) {
-    const buttons = [actionButton('View', 'view-order', order.id)]; if (!canManage()) return actionGroup(buttons);
+    const buttons = [actionButton('View', 'view-order', order.id)];
+    if (order.status === 'Delivered') buttons.push(actionButton('Request return', 'request-return', order.id));
+    if (!canManage()) return actionGroup(buttons);
     const next = { Pending: 'Confirmed', Confirmed: 'Processing', Processing: 'Shipped', Shipped: 'Delivered' }[order.status];
     if (next) buttons.push(actionButton(`Mark ${next}`, 'advance-order', order.id, false, { status: next }));
     if (['Pending', 'Confirmed', 'Processing'].includes(order.status)) buttons.push(actionButton('Cancel', 'cancel-order', order.id, true));
     if (order.status === 'Pending') buttons.push(actionButton('Delete', 'delete-order', order.id, true)); return actionGroup(buttons);
+}
+
+function returnActions(item) {
+    const buttons = [actionButton('View', 'view-return', item.id)];
+    if (!canManage()) return actionGroup(buttons);
+    if (item.status === 'Requested') {
+        buttons.push(actionButton('Approve', 'approve-return', item.id));
+        buttons.push(actionButton('Reject', 'reject-return', item.id, true));
+    }
+    if (item.status === 'Approved') buttons.push(actionButton('Receive', 'receive-return', item.id));
+    if (item.status === 'Received') buttons.push(actionButton('Record refund', 'refund-return', item.id));
+    return actionGroup(buttons);
 }
 
 function transferActions(transfer) {

@@ -79,6 +79,7 @@ The application uses Laravel as the primary backend/API layer, while a separate 
 - Transaction-safe warehouse transfers with approval, dispatch, and receipt stages
 - Supplier purchase orders with approval, partial goods receipt, and damaged/rejected quantity tracking
 - Warehouse-based order reservation, packing, shipment tracking, and status history
+- Partial product returns with inspection, restocking, damaged stock, and refund tracking
 - Low-stock detection
 - Order creation and status filtering
 - Transaction-safe order confirmation and cancellation
@@ -306,6 +307,25 @@ Eligible orders may also become `Cancelled`.
 Confirming an order reserves stock in its selected warehouse without deducting it. Processing marks all items packed. Shipping releases the reservation, deducts physical stock, creates `ORDER` movements, and records the carrier, tracking number, address, and shipment time. Every status change is stored in the order history.
 
 Cancelling a confirmed or processing order releases its reservation. Status rules and timestamps prevent the same order from reserving or deducting stock twice.
+
+### Returns and refunds
+
+```text
+GET|POST          /api/returns
+GET               /api/returns/{id}
+PATCH             /api/returns/{id}/status
+POST              /api/returns/{id}/receive
+POST              /api/returns/{id}/refund
+```
+
+Returns follow:
+
+```text
+Requested -> Approved -> Received -> Refunded
+          \-> Rejected
+```
+
+Only delivered quantities can be returned. Restockable items increase available stock. Damaged items are added to physical stock but excluded from available stock. Refunds are tracked internally; no external payment gateway is called.
 
 ### Dashboard and Laravel reports
 
