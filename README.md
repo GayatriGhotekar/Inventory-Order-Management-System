@@ -532,7 +532,20 @@ routes/                     Web and API routes
 tests/Feature/              Laravel feature and integration tests
 docker/                     Nginx and PHP container configuration
 compose.yaml                Docker services and private network
+compose.production.yaml     Production container configuration
+docs/portfolio/             Architecture, workflows, and deployment guides
+scripts/                    Deployment and database safety scripts
 ```
+
+## Deployment and portfolio documents
+
+- [System architecture](docs/portfolio/ARCHITECTURE.md)
+- [Database overview](docs/portfolio/DATABASE.md)
+- [Business workflow diagrams](docs/portfolio/WORKFLOWS.md)
+- [Production deployment](docs/portfolio/DEPLOYMENT.md)
+- [Resume bullets and known limitations](docs/portfolio/PORTFOLIO.md)
+
+For a production deployment, copy `.env.production.example` to `.env.production`, replace every placeholder secret, configure HTTPS at the hosting proxy, and run `./scripts/deploy.sh`.
 
 ## Important implementation choices
 
@@ -554,37 +567,4 @@ docker compose build reporting
 curl http://localhost:8088/api/health
 curl http://localhost:8090/health
 ```
-
-## Final Verification:
-
-Run the following commands to verify that all services are working correctly: 
-
-```bash
-docker compose config --quiet
-docker  compose exec app php artisan test 
-docker compose builde reporting 
-curl http://localhost:8088/api/health
-curl http://localhost:8090/health
-```
-
-### Verification Results 
-
-```bash
-PHP formatting: 67 files passed
-Laravel tests: 49 passed, 218 assertions
-Go tests: passed during Docker build
-Docker Compose configuration: valid
-Laravel health: working
-Go health: working
-Swagger: HTTP 200
-Application: HTTP 200
-MySQL: healthy
-```
-
-
-
-
-
-
-
 
