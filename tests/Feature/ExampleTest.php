@@ -46,5 +46,6 @@ class ExampleTest extends TestCase
         $this->assertStringContainsString("'receive-return'", $script);
         $this->assertStringContainsString('loadAudits', $script);
         $this->assertStringContainsString('loadNotifications', $script);
+        $this->assertStringContainsString('/reports/operations?', $script);
     }
 }

@@ -6,8 +6,11 @@ use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderReturn;
 use App\Models\Product;
 use App\Models\User;
+use App\Models\Warehouse;
+use App\Models\WarehouseInventory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -90,6 +93,37 @@ class DashboardReportTest extends TestCase
     {
         $this->getJson('/api/dashboard')->assertUnauthorized();
         $this->getJson('/api/reports/daily-sales')->assertUnauthorized();
+    }
+
+    public function test_operations_report_uses_date_and_warehouse_filters(): void
+    {
+        [$user, $customer, $category] = $this->authenticate();
+        $warehouse = Warehouse::create(['name' => 'Analytics Warehouse', 'code' => 'ANALYTICS', 'status' => 'Active']);
+        $otherWarehouse = Warehouse::create(['name' => 'Other Warehouse', 'code' => 'OTHER', 'status' => 'Active']);
+        $product = Product::factory()->create(['category_id' => $category->id, 'price' => 25]);
+        WarehouseInventory::create(['warehouse_id' => $warehouse->id, 'product_id' => $product->id, 'on_hand_quantity' => 4, 'reorder_level' => 5]);
+        WarehouseInventory::create(['warehouse_id' => $otherWarehouse->id, 'product_id' => $product->id, 'on_hand_quantity' => 20, 'reorder_level' => 5]);
+        $delivered = Order::factory()->create([
+            'customer_id' => $customer->id, 'created_by' => $user->id, 'warehouse_id' => $warehouse->id,
+            'status' => 'Delivered', 'subtotal' => 100, 'total' => 100,
+            'created_at' => now()->subHours(4), 'updated_at' => now(),
+        ]);
+        $this->makeOrder($user, $customer, 'Delivered', '900.00')->update(['warehouse_id' => $otherWarehouse->id]);
+        OrderReturn::create([
+            'return_number' => 'RET-REPORT-1', 'order_id' => $delivered->id, 'status' => 'Refunded',
+            'reason' => 'Damaged', 'refund_amount' => 20, 'requested_by' => $user->id,
+        ]);
+
+        $this->getJson('/api/reports/operations?from='.today()->toDateString().'&to='.today()->toDateString().'&warehouse_id='.$warehouse->id)
+            ->assertOk()->assertJsonPath('data.total_orders', 1)
+            ->assertJsonPath('data.revenue', '100.00')
+            ->assertJsonPath('data.refunds', '20.00')
+            ->assertJsonPath('data.return_rate', 100)
+            ->assertJsonPath('data.inventory_value', '100.00')
+            ->assertJsonPath('data.low_stock_items', 1)
+            ->assertJsonPath('data.warehouses.0.id', $warehouse->id);
+
+        $this->getJson('/api/reports/operations?from=2026-10-25&to=2026-10-24')->assertUnprocessable();
     }
 
     private function authenticate(): array

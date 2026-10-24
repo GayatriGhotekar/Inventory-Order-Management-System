@@ -49,6 +49,7 @@ class ApiDocumentationTest extends TestCase
             '/api/notification-preferences',
             '/api/dashboard',
             '/api/reports/daily-sales',
+            '/api/reports/operations',
             '/reports/sales-summary',
         ];
 

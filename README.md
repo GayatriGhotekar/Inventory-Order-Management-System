@@ -385,6 +385,17 @@ GET /api/reports/low-stock
 
 Only `Delivered` orders contribute to sales and best-selling-product totals. A product is low on stock when `stock_quantity <= low_stock_limit`.
 
+### Operations analytics
+
+The **Reports** screen includes a 30-day operations summary with revenue, refunds, return rate, average fulfilment time, inventory value, low/out-of-stock counts, and warehouse performance. Use the date and warehouse fields to narrow the results.
+
+```text
+GET /api/reports/operations
+GET /api/reports/operations?from=2026-10-01&to=2026-10-31&warehouse_id=1
+```
+
+Revenue and fulfilment use delivered orders. Refund totals use completed refunds. Inventory valuation uses the current product selling price, so it is an estimated retail value rather than accounting cost or profit.
+
 ## Go reporting service
 
 The read-only Go service is exposed on port `8090`:
@@ -441,6 +452,7 @@ Coverage includes:
 - Order totals and database prices
 - Confirmation, rollback, cancellation, and status rules
 - Dashboard and report calculations
+- Date- and warehouse-filtered operations analytics
 - Complete creation-to-delivery workflow
 - Swagger page and OpenAPI JSON integrity
 

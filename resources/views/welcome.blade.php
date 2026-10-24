@@ -220,6 +220,19 @@
             </section>
 
             <section id="reports-view" class="view" hidden>
+                <div class="panel">
+                    <div class="panel-heading">
+                        <div><p class="eyebrow">Filtered metrics</p><h2>Operations analytics</h2></div>
+                        <form id="report-filter-form" class="inline-form">
+                            <input id="report-from" type="date" aria-label="Report start date">
+                            <input id="report-to" type="date" aria-label="Report end date">
+                            <select id="report-warehouse" aria-label="Report warehouse"><option value="">All warehouses</option></select>
+                            <button class="secondary-button">Apply</button>
+                        </form>
+                    </div>
+                    <div id="operations-summary" class="card-grid compact"></div>
+                    <div id="warehouse-performance-table" class="table-wrap"></div>
+                </div>
                 <div id="order-summary" class="card-grid compact"></div>
                 <div class="report-grid">
                     <div class="panel">

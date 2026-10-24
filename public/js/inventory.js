@@ -71,6 +71,7 @@ document.querySelector('#notification-preferences-form').addEventListener('submi
         showMessage('Notification preferences saved.');
     } catch (exception) { showMessage(exception.message, 'error'); }
 });
+document.querySelector('#report-filter-form').addEventListener('submit', (event) => { event.preventDefault(); loadReports(); });
 
 document.addEventListener('click', async (event) => {
     const trigger = event.target.closest('[data-action]');
@@ -269,7 +270,17 @@ async function loadInventory(url = null) {
 }
 
 async function loadReports() {
-    const [orders, products, monthly] = await Promise.all([api('/reports/orders-summary'), api('/reports/best-selling-products'), api('/reports/monthly-sales')]);
+    const from = document.querySelector('#report-from').value;
+    const to = document.querySelector('#report-to').value;
+    const warehouseId = document.querySelector('#report-warehouse').value;
+    const parameters = new URLSearchParams({ ...(from && { from }), ...(to && { to }), ...(warehouseId && { warehouse_id: warehouseId }) });
+    const [orders, products, monthly, operations, warehouses] = await Promise.all([api('/reports/orders-summary'), api('/reports/best-selling-products'), api('/reports/monthly-sales'), api(`/reports/operations?${parameters}`), api('/warehouses')]);
+    const warehouseFilter = document.querySelector('#report-warehouse');
+    const selectedWarehouse = warehouseFilter.value;
+    warehouseFilter.replaceChildren(new Option('All warehouses', ''), ...warehouses.map((warehouse) => new Option(warehouse.name, warehouse.id)));
+    warehouseFilter.value = selectedWarehouse;
+    renderCards('#operations-summary', [['Revenue', currency(operations.revenue)], ['Refunds', currency(operations.refunds)], ['Return rate', `${operations.return_rate}%`], ['Avg. fulfilment', `${operations.average_fulfilment_hours} hours`], ['Inventory value', currency(operations.inventory_value)], ['Low stock', operations.low_stock_items], ['Out of stock', operations.dead_stock_items]]);
+    renderTable('#warehouse-performance-table', ['Warehouse', 'Orders', 'Delivered', 'Revenue', 'Inventory value'], operations.warehouses.map((warehouse) => [warehouse.name, warehouse.orders, warehouse.delivered_orders, currency(warehouse.revenue), currency(warehouse.inventory_value)]));
     renderCards('#order-summary', [['All orders', orders.total_orders], ...orders.orders_by_status.map((item) => [item.status, item.total])]);
     renderTable('#best-sellers-table', ['Product', 'SKU', 'Units', 'Sales'], products.map((product) => [product.name, product.sku, product.total_quantity, currency(product.total_sales)]));
     renderTable('#monthly-sales-table', ['Month', 'Orders', 'Sales'], monthly.months.map((month) => [month.month, month.total_orders, currency(month.total_sales)]));

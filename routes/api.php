@@ -65,6 +65,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
         Route::get('/best-selling-products', [ReportController::class, 'bestSellingProducts']);
         Route::get('/inventory', [ReportController::class, 'inventory']);
         Route::get('/low-stock', [ReportController::class, 'lowStock']);
+        Route::get('/operations', [ReportController::class, 'operations']);
     });
 
     Route::middleware('permission:catalog.manage')->group(function () {
