@@ -28,6 +28,9 @@ class ExampleTest extends TestCase
             ->assertSee('/css/inventory.css', false)
             ->assertSee('/js/inventory.js', false);
 
+        $response->assertSee('inventory.css?v=', false)
+            ->assertSee('inventory.js?v=', false);
+
         $this->assertFileExists(public_path('css/inventory.css'));
         $this->assertFileExists(public_path('js/inventory.js'));
 

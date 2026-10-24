@@ -4,8 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Inventory &amp; Order Management</title>
-    <link rel="stylesheet" href="/css/inventory.css">
-    <script src="/js/inventory.js" defer></script>
+    <link rel="stylesheet" href="/css/inventory.css?v={{ filemtime(public_path('css/inventory.css')) }}">
+    <script src="/js/inventory.js?v={{ filemtime(public_path('js/inventory.js')) }}" defer></script>
 </head>
 <body>
     <main id="login-screen" class="login-screen">
