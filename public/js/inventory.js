@@ -106,6 +106,7 @@ document.addEventListener('click', async (event) => {
         'page-transfers': () => loadTransfers(document.querySelector('#transfer-status').value, trigger.dataset.url),
         'page-purchases': () => loadPurchases(document.querySelector('#purchase-status').value, trigger.dataset.url),
         'page-returns': () => loadReturns(document.querySelector('#return-status').value, trigger.dataset.url),
+        'page-audits': () => loadAudits(trigger.dataset.url),
         'add-order-item': addOrderItemRow,
         'add-purchase-item': addPurchaseItemRow,
         'remove-order-item': () => trigger.closest('.order-item').remove(),
@@ -151,7 +152,7 @@ async function openView(name) {
     document.querySelector('#page-title').textContent = capitalize(name);
     document.querySelector('#page-label').textContent = name === 'dashboard' ? 'Overview' : 'Workspace';
     showMessage('');
-    const loaders = { dashboard: loadDashboard, products: loadProducts, categories: loadCategories, suppliers: loadSuppliers, purchases: loadPurchases, customers: loadCustomers, warehouses: loadWarehouses, transfers: loadTransfers, orders: loadOrders, returns: loadReturns, inventory: loadInventory, reports: loadReports };
+    const loaders = { dashboard: loadDashboard, products: loadProducts, categories: loadCategories, suppliers: loadSuppliers, purchases: loadPurchases, customers: loadCustomers, warehouses: loadWarehouses, transfers: loadTransfers, orders: loadOrders, returns: loadReturns, inventory: loadInventory, reports: loadReports, audits: loadAudits };
     try { await loaders[name](); } catch (exception) { showMessage(exception.message, 'error'); }
 }
 
@@ -259,6 +260,16 @@ async function loadReports() {
     renderCards('#order-summary', [['All orders', orders.total_orders], ...orders.orders_by_status.map((item) => [item.status, item.total])]);
     renderTable('#best-sellers-table', ['Product', 'SKU', 'Units', 'Sales'], products.map((product) => [product.name, product.sku, product.total_quantity, currency(product.total_sales)]));
     renderTable('#monthly-sales-table', ['Month', 'Orders', 'Sales'], monthly.months.map((month) => [month.month, month.total_orders, currency(month.total_sales)]));
+}
+
+async function loadAudits(url = null) {
+    const result = await api(url ? apiPath(url) : '/audit-logs');
+    renderTable('#audits-table', ['Time', 'User', 'Action', 'Record', 'Status', 'Reason'], result.data.map((log) => [
+        dateTime(log.created_at), log.user?.name || 'Unknown user', log.action,
+        log.entity_type ? `${log.entity_type} #${log.entity_id || '—'}` : '—',
+        log.response_status, log.reason || '—',
+    ]));
+    renderPagination('#audits-pagination', result, 'page-audits');
 }
 
 async function openCategoryDialog(category = null) {

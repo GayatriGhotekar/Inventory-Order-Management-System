@@ -24,6 +24,7 @@ class ExampleTest extends TestCase
             ->assertSee('id="warehouses-view"', false)
             ->assertSee('id="transfers-view"', false)
             ->assertSee('id="returns-view"', false)
+            ->assertSee('id="audits-view"', false)
             ->assertSee('id="record-dialog"', false)
             ->assertSee('data-action="create-order"', false)
             ->assertSee('/css/inventory.css', false)
@@ -42,5 +43,6 @@ class ExampleTest extends TestCase
         $this->assertStringContainsString("'receive-purchase'", $script);
         $this->assertStringContainsString('openShipmentDialog', $script);
         $this->assertStringContainsString("'receive-return'", $script);
+        $this->assertStringContainsString('loadAudits', $script);
     }
 }

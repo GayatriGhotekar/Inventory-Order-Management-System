@@ -46,6 +46,7 @@
                 <button class="nav-button" data-view="returns">Returns</button>
                 <button class="nav-button" data-view="inventory">Inventory</button>
                 <button class="nav-button" data-view="reports">Reports</button>
+                <button class="nav-button manager-action" data-view="audits">Audit Logs</button>
             </nav>
 
             <button id="logout-button" class="logout-button">Sign out</button>
@@ -228,6 +229,16 @@
                         <div class="panel-heading"><div><p class="eyebrow">This year</p><h2>Monthly sales</h2></div></div>
                         <div id="monthly-sales-table" class="table-wrap"></div>
                     </div>
+                </div>
+            </section>
+
+            <section id="audits-view" class="view" hidden>
+                <div class="panel">
+                    <div class="panel-heading">
+                        <div><p class="eyebrow">Security</p><h2>Audit logs</h2></div>
+                    </div>
+                    <div id="audits-table" class="table-wrap"></div>
+                    <div id="audits-pagination" class="pagination"></div>
                 </div>
             </section>
         </div>

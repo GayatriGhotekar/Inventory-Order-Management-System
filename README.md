@@ -327,6 +327,24 @@ Requested -> Approved -> Received -> Refunded
 
 Only delivered quantities can be returned. Restockable items increase available stock. Damaged items are added to physical stock but excluded from available stock. Refunds are tracked internally; no external payment gateway is called.
 
+### Permissions and audit logs
+
+The API uses easy-to-read named permissions instead of checking roles inside controllers. Examples include `catalog.manage`, `inventory.adjust`, `orders.create`, and `orders.manage`.
+
+- Admin: all permissions and the permission matrix
+- Manager: operational permissions and audit logs
+- Staff: create orders and request returns; read-only access elsewhere
+
+Every successful POST, PUT, PATCH, and DELETE request is recorded with the user, action, time, response status, IP address, and safe request values. Password fields are never stored.
+
+```text
+GET /api/audit-logs              Admin and manager
+GET /api/audit-logs?action=order Filter by action
+GET /api/permissions             Admin only
+```
+
+In the browser, sign in as an admin or manager and choose **Audit Logs** from the sidebar.
+
 ### Dashboard and Laravel reports
 
 ```text
@@ -387,7 +405,8 @@ Tests use an in-memory SQLite database configured in `tests/TestCase.php`. They 
 
 Coverage includes:
 
-- Authentication and role authorization
+- Authentication and named-permission authorization
+- Audit logging for successful data changes
 - Validation and unique fields
 - CRUD behavior and filtering
 - Stock movements and negative-stock prevention
@@ -460,7 +479,7 @@ compose.yaml                Docker services and private network
 - Controllers and Eloquent models are used directly to keep the project understandable.
 - Database transactions protect multi-table stock and order changes.
 - `lockForUpdate()` prevents concurrent confirmation or cancellation from changing the same rows twice.
-- Sanctum tokens protect the API, while role middleware handles authorization.
+- Sanctum tokens protect the API, while named permissions handle authorization.
 - Reports use direct Eloquent or SQL aggregation queries.
 - The Go service remains small and read-only.
 - API data is rendered with DOM methods instead of inserting untrusted HTML.

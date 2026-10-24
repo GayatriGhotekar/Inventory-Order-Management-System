@@ -10,7 +10,7 @@
     { "name": "Health" }, { "name": "Authentication" }, { "name": "Categories" },
     { "name": "Products" }, { "name": "Suppliers" }, { "name": "Customers" },
     { "name": "Inventory" }, { "name": "Warehouses" }, { "name": "Stock Transfers" }, { "name": "Purchasing" }, { "name": "Orders" }, { "name": "Returns" }, { "name": "Dashboard" },
-    { "name": "Reports" }, { "name": "Go Reports" }
+    { "name": "Reports" }, { "name": "Audit" }, { "name": "Permissions" }, { "name": "Go Reports" }
   ],
   "paths": {
     "/api/health": {
@@ -82,6 +82,9 @@
     "/api/purchase-orders/{id}/status": { "patch": { "tags": ["Purchasing"], "summary": "Approve or cancel purchase order", "security": [{ "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "$ref": "#/components/responses/Success" }, "409": { "$ref": "#/components/responses/Error" } } } },
     "/api/purchase-orders/{id}/receive": { "post": { "tags": ["Purchasing"], "summary": "Receive accepted, damaged, or rejected goods", "security": [{ "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "201": { "$ref": "#/components/responses/Success" }, "409": { "$ref": "#/components/responses/Error" }, "422": { "$ref": "#/components/responses/ValidationError" } } } },
 
+    "/api/audit-logs": { "get": { "tags": ["Audit"], "summary": "List successful data-changing actions (admin/manager)", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "action", "in": "query", "schema": { "type": "string" } }, { "name": "user_id", "in": "query", "schema": { "type": "integer" } }, { "$ref": "#/components/parameters/Page" }], "responses": { "200": { "$ref": "#/components/responses/Success" }, "403": { "$ref": "#/components/responses/Forbidden" } } } },
+    "/api/permissions": { "get": { "tags": ["Permissions"], "summary": "View named permissions and role matrix (admin)", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Success" }, "403": { "$ref": "#/components/responses/Forbidden" } } } },
+
     "/api/dashboard": { "get": { "tags": ["Dashboard"], "summary": "Get dashboard totals", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
     "/api/reports/daily-sales": { "get": { "tags": ["Reports"], "summary": "Get delivered sales for a day", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "date", "in": "query", "schema": { "type": "string", "format": "date" } }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
     "/api/reports/monthly-sales": { "get": { "tags": ["Reports"], "summary": "Get delivered sales grouped by month", "security": [{ "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/Year" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
@@ -129,7 +132,7 @@
       "Error": { "description": "Request failed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
       "ValidationError": { "description": "Validation failed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
       "Unauthorized": { "description": "Authentication required", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-      "Forbidden": { "description": "Role is not permitted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+      "Forbidden": { "description": "Required permission is missing", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
       "NotFound": { "description": "Record not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
     }
   }
