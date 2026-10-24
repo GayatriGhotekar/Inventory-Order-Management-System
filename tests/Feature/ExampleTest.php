@@ -39,5 +39,6 @@ class ExampleTest extends TestCase
         $this->assertStringContainsString("'adjust-stock'", $script);
         $this->assertStringContainsString("'advance-order'", $script);
         $this->assertStringContainsString("'receive-purchase'", $script);
+        $this->assertStringContainsString('openShipmentDialog', $script);
     }
 }

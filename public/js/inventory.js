@@ -90,7 +90,7 @@ document.addEventListener('click', async (event) => {
         'adjust-stock': () => openStockDialog(id, trigger.dataset.name, trigger.dataset.mode),
         'view-stock': () => viewStockHistory(id, trigger.dataset.name),
         'create-order': openOrderDialog, 'view-order': () => viewOrder(id),
-        'advance-order': () => updateOrderStatus(id, trigger.dataset.status),
+        'advance-order': () => trigger.dataset.status === 'Shipped' ? openShipmentDialog(id) : updateOrderStatus(id, trigger.dataset.status),
         'cancel-order': () => updateOrderStatus(id, 'Cancelled'),
         'delete-order': () => removeRecord('pending order', `/orders/${id}`, loadOrders),
         'page-products': () => loadProducts(document.querySelector('#product-search').value, trigger.dataset.url),
@@ -228,7 +228,7 @@ async function loadTransfers(status = '', url = null) {
 
 async function loadOrders(status = '', url = null) {
     const result = await api(url ? apiPath(url) : `/orders?status=${encodeURIComponent(status)}`);
-    renderTable('#orders-table', ['Order', 'Customer', 'Status', 'Total', 'Created', 'Actions'], result.data.map((order) => [order.order_number, order.customer?.name || '—', badge(order.status), currency(order.total), date(order.created_at), orderActions(order)]));
+    renderTable('#orders-table', ['Order', 'Customer', 'Warehouse', 'Status', 'Total', 'Created', 'Actions'], result.data.map((order) => [order.order_number, order.customer?.name || '—', order.warehouse?.name || '—', badge(order.status), currency(order.total), date(order.created_at), orderActions(order)]));
     renderPagination('#orders-pagination', result, 'page-orders');
 }
 
@@ -448,17 +448,19 @@ async function viewStockHistory(id, name) {
 }
 
 async function openOrderDialog() {
-    const [customers, productResult] = await Promise.all([api('/customers'), api('/products')]);
+    const [customers, productResult, warehouses] = await Promise.all([api('/customers'), api('/products'), api('/warehouses')]);
     const products = productResult.data.filter((product) => product.status === 'Active');
+    const activeWarehouses = warehouses.filter((warehouse) => warehouse.status === 'Active');
     if (!customers.length) throw new Error('Create a customer before creating an order.');
     if (!products.length) throw new Error('Create an active product before creating an order.');
+    if (!activeWarehouses.length) throw new Error('Create an active warehouse before creating an order.');
     const items = document.createElement('div'); items.className = 'order-items';
     items.dataset.products = JSON.stringify(products.map(({ id, name, sku }) => ({ id, name, sku })));
     const title = document.createElement('strong'); title.textContent = 'Order items'; items.append(title);
     addOrderItemRow(items); items.append(actionButton('Add another item', 'add-order-item'));
-    openDialog('Create order', [selectField('customer_id', 'Customer', customers.map((item) => [item.id, `${item.name} — ${item.email}`]), '', true), items], async (formData) => {
+    openDialog('Create order', [selectField('customer_id', 'Customer', customers.map((item) => [item.id, `${item.name} — ${item.email}`]), '', true), selectField('warehouse_id', 'Fulfilment warehouse', activeWarehouses.map((item) => [item.id, item.name]), '', true), items], async (formData) => {
         const orderItems = [...dialogForm.querySelectorAll('.order-item')].map((row) => ({ product_id: Number(row.querySelector('[name="product_id"]').value), quantity: Number(row.querySelector('[name="quantity"]').value) }));
-        await api('/orders', { method: 'POST', body: JSON.stringify({ customer_id: Number(formData.get('customer_id')), items: orderItems }) });
+        await api('/orders', { method: 'POST', body: JSON.stringify({ customer_id: Number(formData.get('customer_id')), warehouse_id: Number(formData.get('warehouse_id')), items: orderItems }) });
         await loadOrders();
     });
 }
@@ -473,7 +475,8 @@ function addOrderItemRow(container = null) {
 
 async function viewOrder(id) {
     const order = await api(`/orders/${id}`);
-    const summary = document.createElement('p'); summary.className = 'full'; summary.textContent = `Customer: ${order.customer?.name || '—'} · Status: ${order.status} · Total: ${currency(order.total)}`;
+    const shipment = order.shipments?.[0];
+    const summary = document.createElement('p'); summary.className = 'full'; summary.textContent = `Customer: ${order.customer?.name || '—'} · Warehouse: ${order.warehouse?.name || '—'} · Status: ${order.status} · Total: ${currency(order.total)}${shipment ? ` · ${shipment.carrier || 'Carrier'}: ${shipment.tracking_number || 'No tracking number'}` : ''}`;
     const host = document.createElement('div'); host.className = 'table-wrap full';
     openDialog(`Order ${order.order_number}`, [summary, host], null, true);
     renderTableElement(host, ['Product', 'SKU', 'Quantity', 'Unit price', 'Total'], order.items.map((item) => [item.product?.name || '—', item.product?.sku || '—', item.quantity, currency(item.unit_price), currency(item.total_price)]));
@@ -483,6 +486,19 @@ async function updateOrderStatus(id, status) {
     if (!confirm(`Change this order to ${status}?`)) return;
     await api(`/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
     await loadOrders(document.querySelector('#order-status').value);
+}
+
+async function openShipmentDialog(id) {
+    const order = await api(`/orders/${id}`);
+    openDialog(`Ship ${order.order_number}`, [
+        field('carrier', 'Carrier', 'text', '', true),
+        field('tracking_number', 'Tracking number', 'text', '', true),
+        field('shipping_address', 'Shipping address', 'textarea', order.customer?.address || '', true, true),
+        field('notes', 'Shipment notes', 'textarea', '', false, true),
+    ], async (formData) => {
+        await api(`/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'Shipped', ...Object.fromEntries(formData.entries()) }) });
+        await loadOrders(document.querySelector('#order-status').value);
+    });
 }
 
 async function removeRecord(label, path, reload) {

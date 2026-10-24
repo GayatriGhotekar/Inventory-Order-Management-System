@@ -15,6 +15,8 @@ class OrderItem extends Model
         'quantity',
         'unit_price',
         'total_price',
+        'packed_quantity',
+        'shipped_quantity',
     ];
 
     protected function casts(): array
@@ -23,6 +25,8 @@ class OrderItem extends Model
             'quantity' => 'integer',
             'unit_price' => 'decimal:2',
             'total_price' => 'decimal:2',
+            'packed_quantity' => 'integer',
+            'shipped_quantity' => 'integer',
         ];
     }
 

@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
+use App\Models\WarehouseInventory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -14,7 +15,7 @@ class OrderWorkflowTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_confirming_an_order_deducts_stock_and_creates_movements(): void
+    public function test_confirming_an_order_reserves_stock_without_deducting_it(): void
     {
         $manager = User::factory()->create(['role' => 'manager']);
         $product = Product::factory()->create(['stock_quantity' => 10]);
@@ -25,15 +26,10 @@ class OrderWorkflowTest extends TestCase
             'status' => 'Confirmed',
         ])->assertOk()->assertJsonPath('data.status', 'Confirmed');
 
-        $this->assertSame(7, $product->fresh()->stock_quantity);
-        $this->assertDatabaseHas('stock_movements', [
-            'product_id' => $product->id,
-            'type' => 'ORDER',
-            'quantity' => 3,
-            'previous_stock' => 10,
-            'new_stock' => 7,
-            'reference' => $order->order_number,
-        ]);
+        $this->assertSame(10, $product->fresh()->stock_quantity);
+        $this->assertSame(3, WarehouseInventory::where('product_id', $product->id)->value('reserved_quantity'));
+        $this->assertNotNull($order->fresh()->inventory_reserved_at);
+        $this->assertDatabaseCount('stock_movements', 0);
     }
 
     public function test_insufficient_stock_rolls_back_the_confirmation(): void
@@ -52,7 +48,7 @@ class OrderWorkflowTest extends TestCase
         $this->assertDatabaseCount('stock_movements', 0);
     }
 
-    public function test_order_cannot_deduct_stock_twice(): void
+    public function test_order_cannot_reserve_stock_twice(): void
     {
         $manager = User::factory()->create(['role' => 'manager']);
         $product = Product::factory()->create(['stock_quantity' => 10]);
@@ -64,11 +60,12 @@ class OrderWorkflowTest extends TestCase
         $this->patchJson("/api/orders/{$order->id}/status", ['status' => 'Confirmed'])
             ->assertConflict();
 
-        $this->assertSame(7, $product->fresh()->stock_quantity);
-        $this->assertDatabaseCount('stock_movements', 1);
+        $this->assertSame(10, $product->fresh()->stock_quantity);
+        $this->assertSame(3, WarehouseInventory::where('product_id', $product->id)->value('reserved_quantity'));
+        $this->assertDatabaseCount('stock_movements', 0);
     }
 
-    public function test_cancelling_a_confirmed_order_restores_stock_once(): void
+    public function test_cancelling_a_confirmed_order_releases_reservation_once(): void
     {
         $manager = User::factory()->create(['role' => 'manager']);
         $product = Product::factory()->create(['stock_quantity' => 10]);
@@ -83,13 +80,8 @@ class OrderWorkflowTest extends TestCase
             ->assertConflict();
 
         $this->assertSame(10, $product->fresh()->stock_quantity);
-        $this->assertDatabaseHas('stock_movements', [
-            'product_id' => $product->id,
-            'type' => 'RETURN',
-            'previous_stock' => 7,
-            'new_stock' => 10,
-        ]);
-        $this->assertDatabaseCount('stock_movements', 2);
+        $this->assertSame(0, WarehouseInventory::where('product_id', $product->id)->value('reserved_quantity'));
+        $this->assertDatabaseCount('stock_movements', 0);
     }
 
     public function test_pending_order_can_be_cancelled_without_changing_stock(): void
@@ -119,12 +111,29 @@ class OrderWorkflowTest extends TestCase
             ->assertOk();
         $this->patchJson("/api/orders/{$order->id}/status", ['status' => 'Processing'])
             ->assertOk();
-        $this->patchJson("/api/orders/{$order->id}/status", ['status' => 'Shipped'])
+        $this->patchJson("/api/orders/{$order->id}/status", [
+            'status' => 'Shipped',
+            'carrier' => 'BlueDart',
+            'tracking_number' => 'TRACK-001',
+            'shipping_address' => 'Pune, Maharashtra',
+        ])
             ->assertOk();
         $this->patchJson("/api/orders/{$order->id}/status", ['status' => 'Delivered'])
             ->assertOk();
 
         $this->assertSame('Delivered', $order->fresh()->status);
+        $this->assertSame(9, $product->fresh()->stock_quantity);
+        $this->assertDatabaseHas('order_shipments', [
+            'order_id' => $order->id,
+            'carrier' => 'BlueDart',
+            'tracking_number' => 'TRACK-001',
+        ]);
+        $this->assertDatabaseHas('order_items', [
+            'order_id' => $order->id,
+            'packed_quantity' => 1,
+            'shipped_quantity' => 1,
+        ]);
+        $this->assertDatabaseCount('order_status_histories', 4);
     }
 
     public function test_staff_cannot_change_order_status(): void

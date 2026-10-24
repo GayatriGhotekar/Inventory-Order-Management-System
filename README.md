@@ -78,6 +78,7 @@ The application uses Laravel as the primary backend/API layer, while a separate 
 - Multi-warehouse inventory with on-hand, reserved, damaged, and available balances
 - Transaction-safe warehouse transfers with approval, dispatch, and receipt stages
 - Supplier purchase orders with approval, partial goods receipt, and damaged/rejected quantity tracking
+- Warehouse-based order reservation, packing, shipment tracking, and status history
 - Low-stock detection
 - Order creation and status filtering
 - Transaction-safe order confirmation and cancellation
@@ -294,7 +295,7 @@ curl -X POST http://localhost:8088/api/orders \
 
 The server reads prices from the database and calculates every item total. Client-provided prices are not trusted.
 
-The normal status sequence is:
+The order fulfilment sequence is:
 
 ```text
 Pending -> Confirmed -> Processing -> Shipped -> Delivered
@@ -302,9 +303,9 @@ Pending -> Confirmed -> Processing -> Shipped -> Delivered
 
 Eligible orders may also become `Cancelled`.
 
-Confirming an order locks the order and product rows, checks all available stock, deducts stock, creates `ORDER` movements, and updates the status inside one database transaction. If any product has insufficient stock, every change is rolled back.
+Confirming an order reserves stock in its selected warehouse without deducting it. Processing marks all items packed. Shipping releases the reservation, deducts physical stock, creates `ORDER` movements, and records the carrier, tracking number, address, and shipment time. Every status change is stored in the order history.
 
-Cancelling a confirmed or processing order restores stock and creates `RETURN` movements. Status rules prevent the same order from deducting or restoring stock twice.
+Cancelling a confirmed or processing order releases its reservation. Status rules and timestamps prevent the same order from reserving or deducting stock twice.
 
 ### Dashboard and Laravel reports
 
